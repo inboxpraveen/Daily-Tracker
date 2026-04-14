@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HabitFlow - Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design Tokens ─────────────────────────────────────────── */
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e5e2da;
+    --border-light: #f0ede6;
+    --text: #1a1916;
+    --text-2: #6b6860;
+    --text-3: #a09e9a;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --green: #16a34a;
+    --green-light: #dcfce7;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+    --red: #dc2626;
+    --red-light: #fee2e2;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 24px rgba(0,0,0,.08);
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  /* ─── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ─── Layout ────────────────────────────────────────────────── */
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* ─── Header ────────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-icon {
+    width: 40px; height: 40px;
+    background: var(--text);
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+  }
+  .brand h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+  .brand span {
+    font-size: .8rem;
+    color: var(--text-2);
+    font-weight: 400;
+    display: block;
+    margin-top: -2px;
+  }
+
+  /* ─── Month Nav ─────────────────────────────────────────────── */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    box-shadow: var(--shadow);
+  }
+  .month-nav button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--text-2);
+    transition: background .15s, color .15s;
+    font-size: .95rem;
+  }
+  .month-nav button:hover { background: var(--surface2); color: var(--text); }
+  .month-nav .month-label {
+    font-size: .95rem;
+    font-weight: 600;
+    min-width: 130px;
+    text-align: center;
+    letter-spacing: -.01em;
+  }
+
+  /* ─── Stats Strip ───────────────────────────────────────────── */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+  }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.amber::before { background: var(--amber); }
+  .stat-card.red::before   { background: var(--red); }
+  .stat-label {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    line-height: 1;
+  }
+  .stat-sub {
+    font-size: .78rem;
+    color: var(--text-2);
+    margin-top: 4px;
+  }
+
+  /* ─── Progress Bar ──────────────────────────────────────────── */
+  .progress-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .progress-title { font-weight: 600; font-size: .95rem; }
+  .progress-pct {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    color: var(--accent);
+  }
+  .progress-track {
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #60a5fa);
+    border-radius: 99px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ─── Two-column layout ─────────────────────────────────────── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── Tracker Table ─────────────────────────────────────────── */
+  .tracker-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .tracker-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .tracker-card-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: .82rem;
+    font-weight: 600;
+    transition: all .15s;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #333; transform: translateY(-1px); }
+  .btn-outline {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { background: var(--border); }
+  .btn-danger {
+    background: var(--red-light);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: #fecaca; }
+
+  .tracker-scroll { overflow-x: auto; }
+  table.tracker {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+  }
+  table.tracker th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    padding: 8px 4px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-2);
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    z-index: 1;
+  }
+  table.tracker th.habit-col {
+    text-align: left;
+    padding-left: 20px;
+    min-width: 160px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+    border-right: 1px solid var(--border-light);
+  }
+  table.tracker th.week-sep {
+    border-left: 2px solid var(--border);
+  }
+  table.tracker td {
+    padding: 0;
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+  }
+  table.tracker td.habit-cell {
+    text-align: left;
+    padding: 10px 10px 10px 20px;
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border-light);
+    z-index: 1;
+  }
+  table.tracker td.week-sep {
+    border-left: 2px solid var(--border);
+  }
+  .habit-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .habit-emoji { font-size: 1rem; flex-shrink: 0; }
+  .habit-name { font-weight: 500; white-space: nowrap; font-size: .82rem; }
+  .habit-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity .15s;
+    margin-left: auto;
+    padding-right: 6px;
+  }
+  tr:hover .habit-actions { opacity: 1; }
+  .habit-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-size: .7rem;
+    transition: background .12s;
+    color: var(--text-3);
+  }
+  .habit-actions button:hover { background: var(--surface2); color: var(--text); }
+  .habit-actions button.del:hover { background: var(--red-light); color: var(--red); }
+
+  /* ─── Checkboxes ────────────────────────────────────────────── */
+  .day-cell {
+    width: 28px;
+    height: 38px;
+    cursor: pointer;
+    position: relative;
+    transition: background .1s;
+  }
+  .day-cell:hover { background: var(--surface2); }
+  .day-cell.future { opacity: .35; pointer-events: none; }
+  .day-cell.today-col { background: #eff6ff; }
+  .day-cell.today-col:hover { background: #dbeafe; }
+  .check-inner {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .12s;
+    background: var(--surface);
+    pointer-events: none;
+  }
+  .day-cell.done .check-inner {
+    border-color: transparent;
+    color: #fff;
+    font-size: .65rem;
+  }
+  .day-cell.loading .check-inner {
+    opacity: .5;
+  }
+
+  /* ─── Day Header ────────────────────────────────────────────── */
+  .day-header-num { font-weight: 700; display: block; }
+  .day-header-dow { font-size: .6rem; font-weight: 400; color: var(--text-3); }
+  th.today-col {
+    color: var(--accent);
+    background: #eff6ff;
+  }
+
+  /* ─── Footer rows (progress per day) ────────────────────────── */
+  tr.footer-row td {
+    padding: 4px 2px;
+    font-size: .68rem;
+    font-family: var(--mono);
+    color: var(--text-2);
+    font-weight: 500;
+    background: var(--surface);
+    border-top: 2px solid var(--border);
+  }
+  tr.footer-row td.habit-cell {
+    font-family: var(--font);
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-3);
+  }
+  .day-pct-bar {
+    width: 20px;
+    margin: 2px auto 0;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .day-pct-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* ─── Sidebar ───────────────────────────────────────────────── */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+  .panel-body { padding: 14px 18px; }
+
+  /* ─── Analysis ──────────────────────────────────────────────── */
+  .analysis-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .analysis-row:last-child { border-bottom: none; }
+  .analysis-habit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .78rem;
+    font-weight: 500;
+    overflow: hidden;
+  }
+  .analysis-habit span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .analysis-nums {
+    font-size: .72rem;
+    font-family: var(--mono);
+    color: var(--text-2);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .analysis-bar-wrap {
+    width: 60px;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .analysis-bar { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  /* ─── Streak Panel ──────────────────────────────────────────── */
+  .streak-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .streak-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .streak-item-label { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); }
+  .streak-item-val { font-size: 1.4rem; font-weight: 700; letter-spacing: -.03em; margin-top: 2px; }
+
+  /* ─── Add Habit Modal ───────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.3);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow-md);
+    animation: slideUp .2s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block;
+    font-size: .78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: .9rem;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .form-group input:focus { border-color: var(--accent); }
+  .emoji-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .emoji-opt {
+    width: 34px; height: 34px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    font-size: 1rem;
+    display: grid;
+    place-items: center;
+    transition: all .1s;
+  }
+  .emoji-opt.selected, .emoji-opt:hover { border-color: var(--accent); background: var(--accent-light); }
+  .color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .color-opt {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2.5px solid transparent;
+    transition: transform .1s;
+  }
+  .color-opt.selected { border-color: var(--text); transform: scale(1.2); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+  .modal-actions .btn { flex: 1; justify-content: center; }
+
+  /* ─── Toast ─────────────────────────────────────────────────── */
+  .toast-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 200;
+  }
+  .toast {
+    background: var(--text);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-md);
+    animation: toastIn .2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ─── Loading skeleton ──────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 4px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ─── Empty State ───────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-3);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: .9rem; }
+
+  /* ─── Responsive tweaks ─────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .app { padding: 16px 12px; }
+    header { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ─── Header actions ───────────────────────────────────────── */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .header-actions a.btn { text-decoration: none; }
+
+  /* ─── Charts (below tracker) ───────────────────────────────── */
+  .charts-section {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px 12px;
+  }
+  .chart-card h3 {
+    font-size: .9rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-2);
+  }
+  .chart-card canvas {
+    max-height: 220px;
+  }
+
+  .month-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .month-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    text-align: left;
+    font-family: var(--font);
+  }
+  .month-card:hover { border-color: var(--accent); }
+  .month-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+  .month-card h4 { font-size: .95rem; margin-bottom: 10px; font-weight: 600; }
+  .month-card .mc-row { font-size: .78rem; color: var(--text-2); margin-top: 4px; }
+  .focus-hint { font-size: .9rem; color: var(--text-2); margin-bottom: 16px; }
+  .year-chart-wrap { margin-bottom: 8px; }
+
+  .btn-tracker {
+    background: var(--text);
+    color: #fff;
+    border: 1px solid var(--text);
+  }
+  .btn-tracker:hover { background: #333; border-color: #333; color: #fff; transform: translateY(-1px); }
+
+  .btn-dashboard {
+    background: var(--accent);
+    color: #fff;
+    border: 1px solid var(--accent);
+  }
+  .btn-dashboard:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; transform: translateY(-1px); }
+
+  .btn-export-daily {
+    background: var(--green-light);
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+  .btn-export-daily:hover { background: #bbf7d0; border-color: #86efac; }
+
+  .btn-export-month {
+    background: var(--amber-light);
+    color: #b45309;
+    border: 1px solid #fcd34d;
+  }
+  .btn-export-month:hover { background: #fde68a; border-color: #fbbf24; }
+
+  .dash-insights {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .dash-insights { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#x1f33f;</div>
+      <div>
+        <h1>HabitFlow</h1>
+        <span>Insights and dashboard</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-tracker" href="/">Tracker</a>
+      <button type="button" class="btn btn-export-daily" id="exportDailyBtn">Export daily</button>
+      <button type="button" class="btn btn-export-month" id="exportMonthBtn">Export month</button>
+      <div class="month-nav">
+        <button type="button" id="prevYear" title="Previous year">&#8249;</button>
+        <span class="month-label" id="yearLabel">Year</span>
+        <button type="button" id="nextYear" title="Next year">&#8250;</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="chart-card year-chart-wrap">
+    <h3>Yearly statistics (completion percent of possible check-ins)</h3>
+    <canvas id="chartYear" aria-label="Yearly progress chart"></canvas>
+  </div>
+
+  <div class="month-cards" id="monthCards"></div>
+
+  <p class="focus-hint">Detail for <strong id="focusLabel">—</strong></p>
+
+  <div class="stats-strip">
+    <div class="stat-card green">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value" id="statDone">—</div>
+      <div class="stat-sub">check-ins this month</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Habits</div>
+      <div class="stat-value" id="statHabits">—</div>
+      <div class="stat-sub">active habits</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Days tracked</div>
+      <div class="stat-value" id="statDays">—</div>
+      <div class="stat-sub">days in range</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Missed</div>
+      <div class="stat-value" id="statMissed">—</div>
+      <div class="stat-sub">possible check-ins</div>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-header">
+      <span class="progress-title">Monthly progress</span>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="dash-insights">
+    <div class="panel">
+      <div class="panel-header">&#128202; Analysis</div>
+      <div class="panel-body" id="analysisPanel"><div style="color:var(--text-3);font-size:.8rem">Loading...</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">&#9889; Snapshot</div>
+      <div class="panel-body">
+        <div class="streak-grid" id="snapshotGrid">
+          <div class="streak-item"><div class="streak-item-label">Today done</div><div class="streak-item-val" id="snapToday">—</div></div>
+          <div class="streak-item"><div class="streak-item-label">Best day</div><div class="streak-item-val" id="snapBest">—</div></div>
+          <div class="streak-item"><div class="streak-item-label">Avg / day</div><div class="streak-item-val" id="snapAvg">—</div></div>
+          <div class="streak-item"><div class="streak-item-label">Perfect days</div><div class="streak-item-val" id="snapPerfect">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const today = new Date();
+let viewYear = today.getFullYear();
+let focusMonth = today.getMonth() + 1;
+let habits = [];
+let completions = {};
+let stats = {};
+let yearPayload = { months: [] };
+let chartYear = null;
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function showToast(msg, icon) {
+  const wrap = document.getElementById("toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = "<span>" + icon + "</span> " + escHtml(msg);
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function csvEscape(val) {
+  const t = String(val);
+  if (/[",\n\r]/.test(t)) return '"' + t.replace(/"/g, '""') + '"';
+  return t;
+}
+
+function downloadCsv(filename, rows) {
+  const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportDailyCsv() {
+  if (!stats.day_stats || !stats.day_stats.length) {
+    showToast("No data to export for this month", "\u26a0\ufe0f");
+    return;
+  }
+  const wdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const lines = ["date,weekday,completed,total_habits,percent_complete"];
+  stats.day_stats.forEach((ds, idx) => {
+    const day = idx + 1;
+    const dateStr =
+      viewYear + "-" + String(focusMonth).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+    const wd = wdays[new Date(viewYear, focusMonth - 1, day).getDay()];
+    lines.push([dateStr, wd, ds.done, ds.total, Number(ds.pct).toFixed(2)].map(csvEscape).join(","));
+  });
+  const fn = "habitflow-daily-" + viewYear + "-" + String(focusMonth).padStart(2, "0") + ".csv";
+  downloadCsv(fn, lines);
+  showToast("Exported " + fn, "\u2705");
+}
+
+function exportMonthCsv() {
+  if (!habits.length) {
+    showToast("Add habits on the Tracker before exporting", "\u26a0\ufe0f");
+    return;
+  }
+  const daysInMonth = new Date(viewYear, focusMonth, 0).getDate();
+  const lines = [
+    "summary,overall_percent," +
+      (stats.overall_pct ?? "") +
+      ",total_done," +
+      (stats.total_done ?? "") +
+      ",total_possible," +
+      (stats.total_possible ?? "") +
+      ",active_habits," +
+      habits.length,
+  ];
+  const habitHeader = ["date"].concat(habits.map((h) => h.name));
+  lines.push(habitHeader.map(csvEscape).join(","));
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr =
+      viewYear + "-" + String(focusMonth).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    const row = [dateStr];
+    habits.forEach((h) => {
+      const key = h.id + "_" + dateStr;
+      row.push(completions[key] ? "1" : "0");
+    });
+    lines.push(row.map(csvEscape).join(","));
+  }
+  const fn = "habitflow-month-" + viewYear + "-" + String(focusMonth).padStart(2, "0") + ".csv";
+  downloadCsv(fn, lines);
+  showToast("Exported " + fn, "\u2705");
+}
+
+async function loadHabits() {
+  const res = await fetch("/api/habits");
+  habits = await res.json();
+}
+
+async function loadCompletions() {
+  const res = await fetch("/api/completions/" + viewYear + "/" + focusMonth);
+  completions = await res.json();
+}
+
+async function loadStats() {
+  const res = await fetch("/api/stats/" + viewYear + "/" + focusMonth);
+  stats = await res.json();
+}
+
+async function loadYear() {
+  const res = await fetch("/api/stats/year/" + viewYear);
+  yearPayload = await res.json();
+}
+
+function updateYearLabel() {
+  document.getElementById("yearLabel").textContent = String(viewYear);
+}
+
+function updateFocusLabel() {
+  const names = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  document.getElementById("focusLabel").textContent = names[focusMonth - 1] + " " + viewYear;
+}
+
+function renderAnalysis() {
+  const el = document.getElementById("analysisPanel");
+  if (!stats.habit_stats || !stats.habit_stats.length) {
+    el.innerHTML = '<div style="color:var(--text-3);font-size:.8rem">No data yet</div>';
+    return;
+  }
+  el.innerHTML = stats.habit_stats
+    .map(
+      (h) => `
+    <div class="analysis-row">
+      <div class="analysis-habit">
+        <span>${h.emoji}</span>
+        <span>${escHtml(h.name)}</span>
+      </div>
+      <div class="analysis-nums">${h.actual}/${h.goal}</div>
+      <div class="analysis-bar-wrap">
+        <div class="analysis-bar" style="width:${h.pct}%;background:${h.color}"></div>
+      </div>
+    </div>`
+    )
+    .join("");
+}
+
+function renderSnapshot() {
+  if (!stats.day_stats) return;
+  const todayDay =
+    viewYear === today.getFullYear() && focusMonth === today.getMonth() + 1 ? today.getDate() : null;
+  const todayDs = todayDay ? stats.day_stats[todayDay - 1] : null;
+  const todayDone = todayDs ? todayDs.done : 0;
+  const totalH = habits.length || 1;
+
+  const bestDay = Math.max(...stats.day_stats.map((d) => d.done), 0);
+  const tracked = stats.day_stats.filter((d) => d.done > 0);
+  const avg = tracked.length
+    ? (tracked.reduce((s, d) => s + d.done, 0) / tracked.length).toFixed(1)
+    : "0";
+  const perfect = stats.day_stats.filter((d) => d.done === totalH && totalH > 0).length;
+
+  document.getElementById("snapToday").textContent = todayDone + "/" + totalH;
+  document.getElementById("snapBest").textContent = String(bestDay);
+  document.getElementById("snapAvg").textContent = avg;
+  document.getElementById("snapPerfect").textContent = String(perfect);
+
+  const pct = stats.overall_pct || 0;
+  document.getElementById("progressPct").textContent = pct + "%";
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("statDone").textContent = stats.total_done || 0;
+  document.getElementById("statHabits").textContent = habits.length;
+  document.getElementById("statDays").textContent = stats.days_elapsed || 0;
+  document.getElementById("statMissed").textContent =
+    (stats.total_possible || 0) - (stats.total_done || 0);
+}
+
+function renderMonthCards() {
+  const el = document.getElementById("monthCards");
+  if (!yearPayload.months || !yearPayload.months.length) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = yearPayload.months
+    .map((m) => {
+      const active = m.month === focusMonth ? " active" : "";
+      return (
+        '<button type="button" class="month-card' +
+        active +
+        '" data-month="' +
+        m.month +
+        '">' +
+        "<h4>" +
+        escHtml(m.month_name) +
+        "</h4>" +
+        '<div class="mc-row">Habits: ' +
+        m.total_habits +
+        "</div>" +
+        '<div class="mc-row">Completed: ' +
+        m.total_done +
+        "</div>" +
+        '<div class="mc-row">Progress: ' +
+        m.overall_pct +
+        "%</div>" +
+        "</button>"
+      );
+    })
+    .join("");
+  el.querySelectorAll(".month-card").forEach((btn) => {
+    btn.onclick = () => {
+      focusMonth = parseInt(btn.getAttribute("data-month"), 10);
+      loadDetail();
+    };
+  });
+}
+
+function renderYearChart() {
+  if (typeof Chart === "undefined") return;
+  const ctx = document.getElementById("chartYear");
+  if (chartYear) {
+    chartYear.destroy();
+    chartYear = null;
+  }
+  if (!yearPayload.months || !yearPayload.months.length) return;
+  const labels = yearPayload.months.map((m) => m.month_name.slice(0, 3));
+  const data = yearPayload.months.map((m) => m.overall_pct);
+  const green = "#15803d";
+  const fill = "rgba(34, 197, 94, 0.2)";
+  chartYear = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Progress %",
+          data,
+          borderColor: green,
+          backgroundColor: fill,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 2,
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: (v) => v + "%" } },
+        x: { grid: { display: false } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+async function loadDetail() {
+  updateFocusLabel();
+  await Promise.all([loadHabits(), loadCompletions(), loadStats()]);
+  renderMonthCards();
+  renderAnalysis();
+  renderSnapshot();
+}
+
+async function loadAll() {
+  updateYearLabel();
+  await loadYear();
+  renderYearChart();
+  await loadDetail();
+}
+
+function setupNav() {
+  document.getElementById("prevYear").onclick = () => {
+    viewYear--;
+    loadAll();
+  };
+  document.getElementById("nextYear").onclick = () => {
+    viewYear++;
+    loadAll();
+  };
+}
+
+function setupExport() {
+  document.getElementById("exportDailyBtn").onclick = () => exportDailyCsv();
+  document.getElementById("exportMonthBtn").onclick = () => exportMonthCsv();
+}
+
+setupNav();
+setupExport();
+loadAll();
+
+</script>
+</body>
+</html>

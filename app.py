@@ -52,6 +52,61 @@ def init_db():
 def index():
     return render_template('index.html')
 
+
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+
+def _month_summary(conn, year, month):
+    """Aggregate counts for one month (same rules as get_stats)."""
+    habits = conn.execute('SELECT * FROM habits WHERE active=1').fetchall()
+    total_habits = len(habits)
+    last_day = calendar.monthrange(year, month)[1]
+    today = date.today()
+    if today.year == year and today.month == month:
+        days_elapsed = today.day
+    elif date(year, month, 1) > today:
+        days_elapsed = 0
+    else:
+        days_elapsed = last_day
+    start = f'{year:04d}-{month:02d}-01'
+    end = f'{year:04d}-{month:02d}-{last_day:02d}'
+    total_possible = total_habits * days_elapsed
+    total_done = conn.execute(
+        'SELECT COUNT(*) FROM completions c JOIN habits h ON c.habit_id=h.id '
+        'WHERE h.active=1 AND completion_date BETWEEN ? AND ?',
+        (start, end)
+    ).fetchone()[0]
+    overall_pct = round((total_done / total_possible * 100) if total_possible > 0 else 0, 1)
+    return {
+        'total_habits': total_habits,
+        'last_day': last_day,
+        'days_elapsed': days_elapsed,
+        'total_done': total_done,
+        'total_possible': total_possible,
+        'overall_pct': overall_pct,
+    }
+
+
+@app.route('/api/stats/year/<int:year>', methods=['GET'])
+def get_year_stats(year):
+    conn = get_db()
+    months = []
+    names = [
+        '', 'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+    ]
+    for m in range(1, 13):
+        s = _month_summary(conn, year, m)
+        months.append({
+            'month': m,
+            'month_name': names[m],
+            **s,
+        })
+    conn.close()
+    return jsonify({'year': year, 'months': months})
+
 @app.route('/api/habits', methods=['GET'])
 def get_habits():
     conn = get_db()

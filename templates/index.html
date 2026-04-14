@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HabitFlow — Daily Tracker</title>
+<title>HabitFlow - Daily Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -612,9 +612,69 @@
 
   /* ─── Responsive tweaks ─────────────────────────────────────── */
   @media (max-width: 600px) {
-    .stats-strip { grid-template-columns: 1fr 1fr; }
     .app { padding: 16px 12px; }
     header { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ─── Header actions ───────────────────────────────────────── */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .header-actions a.btn { text-decoration: none; }
+
+  .btn-tracker {
+    background: var(--text);
+    color: #fff;
+    border: 1px solid var(--text);
+  }
+  .btn-tracker:hover { background: #333; border-color: #333; color: #fff; transform: translateY(-1px); }
+
+  .btn-dashboard {
+    background: var(--accent);
+    color: #fff;
+    border: 1px solid var(--accent);
+  }
+  .btn-dashboard:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; transform: translateY(-1px); }
+
+  .btn-export-daily {
+    background: var(--green-light);
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+  .btn-export-daily:hover { background: #bbf7d0; border-color: #86efac; }
+
+  .btn-export-month {
+    background: var(--amber-light);
+    color: #b45309;
+    border: 1px solid #fcd34d;
+  }
+  .btn-export-month:hover { background: #fde68a; border-color: #fbbf24; }
+
+  /* ─── Charts (below tracker) ───────────────────────────────── */
+  .charts-section {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px 12px;
+  }
+  .chart-card h3 {
+    font-size: .9rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-2);
+  }
+  .chart-card canvas {
+    max-height: 220px;
   }
 </style>
 </head>
@@ -629,100 +689,41 @@
         <span>Daily Tracker</span>
       </div>
     </div>
-    <div class="month-nav">
-      <button id="prevMonth" title="Previous month">‹</button>
-      <span class="month-label" id="monthLabel">Loading...</span>
-      <button id="nextMonth" title="Next month">›</button>
+    <div class="header-actions">
+      <a class="btn btn-dashboard" href="/dashboard" title="KPIs, analysis, and yearly overview">Dashboard</a>
+      <button type="button" class="btn btn-export-daily" id="exportDailyBtn" title="CSV: one row per day this month">Export daily</button>
+      <button type="button" class="btn btn-export-month" id="exportMonthBtn" title="CSV: habit grid and summary for this month">Export month</button>
+      <div class="month-nav">
+        <button type="button" id="prevMonth" title="Previous month">‹</button>
+        <span class="month-label" id="monthLabel">Loading...</span>
+        <button type="button" id="nextMonth" title="Next month">›</button>
+      </div>
     </div>
   </header>
 
-  <!-- Stats Strip -->
-  <div class="stats-strip" id="statsStrip">
-    <div class="stat-card green">
-      <div class="stat-label">Completed</div>
-      <div class="stat-value" id="statDone">—</div>
-      <div class="stat-sub">check-ins this month</div>
+  <div class="tracker-card">
+    <div class="tracker-card-header">
+      <h2>Daily Check-ins</h2>
+      <button class="btn btn-primary" id="addHabitBtn">+ Add Habit</button>
     </div>
-    <div class="stat-card amber">
-      <div class="stat-label">Habits</div>
-      <div class="stat-value" id="statHabits">—</div>
-      <div class="stat-sub">active habits</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Days Tracked</div>
-      <div class="stat-value" id="statDays">—</div>
-      <div class="stat-sub">days this month</div>
-    </div>
-    <div class="stat-card red">
-      <div class="stat-label">Missed</div>
-      <div class="stat-value" id="statMissed">—</div>
-      <div class="stat-sub">possible check-ins</div>
+    <div class="tracker-scroll">
+      <div id="trackerTable">
+        <div class="empty-state">
+          <div class="icon">⏳</div>
+          <p>Loading tracker...</p>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Progress Bar -->
-  <div class="progress-bar-wrap">
-    <div class="progress-header">
-      <span class="progress-title">Monthly Progress</span>
-      <span class="progress-pct" id="progressPct">0%</span>
+  <div class="charts-section">
+    <div class="chart-card">
+      <h3>Daily completion rate</h3>
+      <canvas id="chartDailyPct" aria-label="Area chart of completion percent by day"></canvas>
     </div>
-    <div class="progress-track">
-      <div class="progress-fill" id="progressFill" style="width:0%"></div>
-    </div>
-  </div>
-
-  <!-- Main Grid -->
-  <div class="main-grid">
-    <!-- Tracker Table -->
-    <div class="tracker-card">
-      <div class="tracker-card-header">
-        <h2>Daily Check-ins</h2>
-        <button class="btn btn-primary" id="addHabitBtn">+ Add Habit</button>
-      </div>
-      <div class="tracker-scroll">
-        <div id="trackerTable">
-          <div class="empty-state">
-            <div class="icon">⏳</div>
-            <p>Loading tracker...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <!-- Analysis -->
-      <div class="panel">
-        <div class="panel-header">📊 Analysis</div>
-        <div class="panel-body" id="analysisPanel">
-          <div style="color:var(--text-3);font-size:.8rem">Loading...</div>
-        </div>
-      </div>
-
-      <!-- Quick stats -->
-      <div class="panel">
-        <div class="panel-header">⚡ Today's Snapshot</div>
-        <div class="panel-body">
-          <div class="streak-grid" id="snapshotGrid">
-            <div class="streak-item">
-              <div class="streak-item-label">Today Done</div>
-              <div class="streak-item-val" id="snapToday">—</div>
-            </div>
-            <div class="streak-item">
-              <div class="streak-item-label">Best Day</div>
-              <div class="streak-item-val" id="snapBest">—</div>
-            </div>
-            <div class="streak-item">
-              <div class="streak-item-label">Avg / Day</div>
-              <div class="streak-item-val" id="snapAvg">—</div>
-            </div>
-            <div class="streak-item">
-              <div class="streak-item-label">Perfect Days</div>
-              <div class="streak-item-val" id="snapPerfect">—</div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="chart-card">
+      <h3>Check-ins per day</h3>
+      <canvas id="chartDailyDone" aria-label="Bar chart of completed habits per day"></canvas>
     </div>
   </div>
 </div>
@@ -755,6 +756,7 @@
 <!-- Toast container -->
 <div class="toast-wrap" id="toastWrap"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // ─── State ───────────────────────────────────────────────────────
 const today = new Date();
@@ -764,6 +766,8 @@ let habits = [];
 let completions = {}; // key: "habitId_YYYY-MM-DD"
 let stats = {};
 let editingHabitId = null;
+let chartDailyPct = null;
+let chartDailyDone = null;
 
 const EMOJIS = ['🌅','💪','📖','💧','🧘','📵','💰','🎯','🏃','🥗','😴','✍️','🎵','🌿','🔥','⭐','🎯','💡','🛡️','🏋️'];
 const COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#f97316','#10b981','#6366f1'];
@@ -777,6 +781,7 @@ async function init() {
   buildColorPicker();
   setupNav();
   setupModal();
+  setupExport();
   await loadAll();
 }
 
@@ -785,8 +790,7 @@ async function loadAll() {
   updateMonthLabel();
   await Promise.all([loadHabits(), loadCompletions(), loadStats()]);
   renderTracker();
-  renderAnalysis();
-  renderSnapshot();
+  renderCharts();
 }
 
 async function loadHabits() {
@@ -925,53 +929,136 @@ function renderTracker() {
   document.getElementById('trackerTable').innerHTML = html;
 }
 
-// ─── Render Analysis ──────────────────────────────────────────────
-function renderAnalysis() {
-  const el = document.getElementById('analysisPanel');
-  if (!stats.habit_stats || !stats.habit_stats.length) {
-    el.innerHTML = '<div style="color:var(--text-3);font-size:.8rem">No data yet</div>';
-    return;
-  }
-  el.innerHTML = stats.habit_stats.map(h => `
-    <div class="analysis-row">
-      <div class="analysis-habit">
-        <span>${h.emoji}</span>
-        <span>${escHtml(h.name)}</span>
-      </div>
-      <div class="analysis-nums">${h.actual}/${h.goal}</div>
-      <div class="analysis-bar-wrap">
-        <div class="analysis-bar" style="width:${h.pct}%;background:${h.color}"></div>
-      </div>
-    </div>
-  `).join('');
+// ─── Charts (Chart.js) ───────────────────────────────────────────
+function renderCharts() {
+  if (typeof Chart === 'undefined') return;
+  const ctxPct = document.getElementById('chartDailyPct');
+  const ctxDone = document.getElementById('chartDailyDone');
+  if (chartDailyPct) { chartDailyPct.destroy(); chartDailyPct = null; }
+  if (chartDailyDone) { chartDailyDone.destroy(); chartDailyDone = null; }
+  if (!habits.length || !stats.day_stats || !stats.day_stats.length) return;
+  const labels = stats.day_stats.map((_, i) => String(i + 1));
+  const pcts = stats.day_stats.map(d => d.pct);
+  const dones = stats.day_stats.map(d => d.done);
+  const green = '#15803d';
+  const greenFill = 'rgba(34, 197, 94, 0.22)';
+
+  chartDailyPct = new Chart(ctxPct, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Completion %',
+        data: pcts,
+        borderColor: green,
+        backgroundColor: greenFill,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { intersect: false, mode: 'index' },
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v + '%' } },
+        x: { title: { display: true, text: 'Day of month' }, grid: { display: false } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  chartDailyDone = new Chart(ctxDone, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Check-ins',
+        data: dones,
+        backgroundColor: 'rgba(37, 99, 235, 0.35)',
+        borderColor: '#2563eb',
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: { min: 0, suggestedMax: Math.max(1, habits.length), ticks: { stepSize: 1 } },
+        x: { title: { display: true, text: 'Day of month' }, grid: { display: false } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
 }
 
-// ─── Render Snapshot ──────────────────────────────────────────────
-function renderSnapshot() {
-  if (!stats.day_stats) return;
-  const todayDay = (currentYear === today.getFullYear() && currentMonth === today.getMonth()+1) ? today.getDate() : null;
-  const todayDs = todayDay ? stats.day_stats[todayDay-1] : null;
-  const todayDone = todayDs ? todayDs.done : 0;
-  const totalH = habits.length || 1;
+// ─── Export CSV ───────────────────────────────────────────────────
+function csvEscape(val) {
+  const t = String(val);
+  if (/[",\n\r]/.test(t)) return '"' + t.replace(/"/g, '""') + '"';
+  return t;
+}
 
-  const bestDay = Math.max(...stats.day_stats.map(d => d.done), 0);
-  const tracked = stats.day_stats.filter(d => d.done > 0);
-  const avg = tracked.length ? (tracked.reduce((s,d)=>s+d.done,0)/tracked.length).toFixed(1) : '0';
-  const perfect = stats.day_stats.filter(d => d.done === totalH && totalH > 0).length;
+function downloadCsv(filename, rows) {
+  const blob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
-  document.getElementById('snapToday').textContent = `${todayDone}/${totalH}`;
-  document.getElementById('snapBest').textContent = bestDay;
-  document.getElementById('snapAvg').textContent = avg;
-  document.getElementById('snapPerfect').textContent = perfect;
+function exportDailyCsv() {
+  if (!stats.day_stats || !stats.day_stats.length) {
+    showToast('No data to export for this month', '\u26a0\ufe0f');
+    return;
+  }
+  const wdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const lines = ['date,weekday,completed,total_habits,percent_complete'];
+  stats.day_stats.forEach((ds, idx) => {
+    const day = idx + 1;
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const wd = wdays[new Date(currentYear, currentMonth - 1, day).getDay()];
+    lines.push([dateStr, wd, ds.done, ds.total, Number(ds.pct).toFixed(2)].map(csvEscape).join(','));
+  });
+  const fn = `habitflow-daily-${currentYear}-${String(currentMonth).padStart(2, '0')}.csv`;
+  downloadCsv(fn, lines);
+  showToast('Exported ' + fn, '\u2705');
+}
 
-  // Update main stats
-  const pct = stats.overall_pct || 0;
-  document.getElementById('progressPct').textContent = `${pct}%`;
-  document.getElementById('progressFill').style.width = `${pct}%`;
-  document.getElementById('statDone').textContent = stats.total_done || 0;
-  document.getElementById('statHabits').textContent = habits.length;
-  document.getElementById('statDays').textContent = stats.days_elapsed || 0;
-  document.getElementById('statMissed').textContent = (stats.total_possible || 0) - (stats.total_done || 0);
+function exportMonthCsv() {
+  if (!habits.length) {
+    showToast('Add habits before exporting the month grid', '\u26a0\ufe0f');
+    return;
+  }
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const lines = [
+    `summary,overall_percent,${stats.overall_pct ?? ''},total_done,${stats.total_done ?? ''},total_possible,${stats.total_possible ?? ''},active_habits,${habits.length}`,
+  ];
+  const habitHeader = ['date', ...habits.map(h => h.name)];
+  lines.push(habitHeader.map(csvEscape).join(','));
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const row = [dateStr];
+    habits.forEach(h => {
+      const key = `${h.id}_${dateStr}`;
+      row.push(completions[key] ? '1' : '0');
+    });
+    lines.push(row.map(csvEscape).join(','));
+  }
+  const fn = `habitflow-month-${currentYear}-${String(currentMonth).padStart(2, '0')}.csv`;
+  downloadCsv(fn, lines);
+  showToast('Exported ' + fn, '\u2705');
+}
+
+function setupExport() {
+  document.getElementById('exportDailyBtn').onclick = () => exportDailyCsv();
+  document.getElementById('exportMonthBtn').onclick = () => exportMonthCsv();
 }
 
 // ─── Toggle Completion ────────────────────────────────────────────
@@ -1001,8 +1088,7 @@ async function toggleCompletion(habitId, dateStr, cell) {
     }
     // Refresh stats quietly
     await loadStats();
-    renderAnalysis();
-    renderSnapshot();
+    renderCharts();
     // Update footer
     renderTrackerFooter();
   } finally {
