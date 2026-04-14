@@ -205,3 +205,19 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# sql lite database
+habits.db
+*.db
+*.db-journal
+*.db-lock
+*.db-wal
+*.db-shm
+*.db-trace
+*.db-trace-lock
+*.db-trace-wal
+*.db-trace-shm
+*.db-trace-lock
+*.db-trace-wal
+*.db-trace-shm
