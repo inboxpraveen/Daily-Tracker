@@ -226,17 +226,12 @@
   }
   .btn-dashboard:hover { background: var(--accent-hover); border-color: var(--accent-hover); transform: translateY(-1px); }
 
-  .btn-export-daily {
+  .btn-export {
     background: var(--green-light);
     color: var(--green-text);
+    border: 1px solid transparent;
   }
-  .btn-export-daily:hover { opacity: .85; }
-
-  .btn-export-month {
-    background: var(--amber-light);
-    color: var(--amber-text);
-  }
-  .btn-export-month:hover { opacity: .85; }
+  .btn-export:hover { opacity: .88; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.22); }
 
   /* ─── Theme Toggle ──────────────────────────────────────────── */
   .theme-btn {
@@ -660,13 +655,9 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
           Tracker
         </a>
-        <button type="button" class="btn btn-export-daily" id="exportDailyBtn">
+        <button type="button" class="btn btn-export" id="exportBtn" title="Export formatted Excel workbook for the focused month">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export daily
-        </button>
-        <button type="button" class="btn btn-export-month" id="exportMonthBtn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export month
+          Export Excel
         </button>
       </div>
       <div class="month-nav">
@@ -873,17 +864,6 @@ function showToast(msg, icon = 'ℹ️') {
   setTimeout(() => el.remove(), 3200);
 }
 
-function csvEscape(val) {
-  const t = String(val);
-  return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
-}
-function downloadCsv(filename, rows) {
-  const blob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 /* ═══════════════════════════════════════════════════════════════
    DATA LOADING
@@ -1047,36 +1027,11 @@ function renderYearChart() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   EXPORT CSV
+   EXPORT
 ═══════════════════════════════════════════════════════════════ */
-function exportDailyCsv() {
-  if (!stats.day_stats || !stats.day_stats.length) { showToast('No data for this month', '⚠️'); return; }
-  const wdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const lines = ['date,weekday,completed,total_habits,percent_complete'];
-  stats.day_stats.forEach((ds, idx) => {
-    const day = idx + 1;
-    const dateStr = fmtDateParts(viewYear, focusMonth, day);
-    const wd = wdays[new Date(viewYear, focusMonth - 1, day).getDay()];
-    lines.push([dateStr, wd, ds.done, ds.total, Number(ds.pct).toFixed(2)].map(csvEscape).join(','));
-  });
-  const fn = `habitflow-daily-${viewYear}-${String(focusMonth).padStart(2,'0')}.csv`;
-  downloadCsv(fn, lines);
-  showToast('Exported ' + fn, '✅');
-}
-
-function exportMonthCsv() {
-  if (!habits.length) { showToast('Add habits on the Tracker first', '⚠️'); return; }
-  const daysInMonth = new Date(viewYear, focusMonth, 0).getDate();
-  const lines = [`summary,overall_percent,${stats.overall_pct ?? ''},total_done,${stats.total_done ?? ''},total_possible,${stats.total_possible ?? ''},active_habits,${habits.length}`];
-  lines.push(['date', ...habits.map(h => h.name)].map(csvEscape).join(','));
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = fmtDateParts(viewYear, focusMonth, d);
-    const row = [dateStr, ...habits.map(h => completions[`${h.id}_${dateStr}`] ? '1' : '0')];
-    lines.push(row.map(csvEscape).join(','));
-  }
-  const fn = `habitflow-month-${viewYear}-${String(focusMonth).padStart(2,'0')}.csv`;
-  downloadCsv(fn, lines);
-  showToast('Exported ' + fn, '✅');
+function exportExcel() {
+  showToast('Preparing Excel export…', '⏳');
+  window.location.href = `/api/export/${viewYear}/${focusMonth}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1111,8 +1066,7 @@ initTheme();
 document.getElementById('prevYear').onclick = () => { viewYear--; loadAll(); };
 document.getElementById('nextYear').onclick = () => { viewYear++; loadAll(); };
 
-document.getElementById('exportDailyBtn').onclick = exportDailyCsv;
-document.getElementById('exportMonthBtn').onclick = exportMonthCsv;
+document.getElementById('exportBtn').onclick = exportExcel;
 
 loadAll();
 </script>

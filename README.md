@@ -14,6 +14,8 @@ The idea is to **help people stay motivated** with a clear, low-friction way to 
 
 ![HabitFlow - Adding New Habit](assets/Adding-New-Habit.png)
 
+![HabitFlow - Tracker](assets/Daily-Tracker-Page-Light.png)
+
 ## Project layout
 
 ```text
