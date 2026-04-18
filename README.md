@@ -8,6 +8,8 @@ The idea is to **help people stay motivated** with a clear, low-friction way to 
 
 ## Screenshots
 
+### Application UI
+
 ![HabitFlow - Tracker](assets/Daily-Tracker-Page.png)
 
 ![HabitFlow - Dashboard](assets/Dashboard.png)
@@ -15,6 +17,15 @@ The idea is to **help people stay motivated** with a clear, low-friction way to 
 ![HabitFlow - Adding New Habit](assets/Adding-New-Habit.png)
 
 ![HabitFlow - Tracker](assets/Daily-Tracker-Page-Light.png)
+
+### Excel Export Screenshots
+
+![HabitFlow Excel - Sheet 1](assets/Excel-Export-1.png)
+
+![HabitFlow Excel - Sheet 2](assets/Excel-Export-2.png)
+
+![HabitFlow Excel - Sheet 3](assets/Excel-Export-3.png)
+
 
 ## Project layout
 
