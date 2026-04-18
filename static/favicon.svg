@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="8" fill="#6366f1"/>
+  <!-- Checkmark / habit tick -->
+  <polyline
+    points="7,17 13,23 25,10"
+    stroke="white"
+    stroke-width="3.2"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
