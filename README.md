@@ -63,6 +63,12 @@ Go to the [Releases](../../releases) page, download `HabitFlow.exe`, and double-
 
 The app tries ports `8050 → 11050 → 12050 → 13050` in order and picks the first free one. If all are taken, edit the `PORTS` list near the bottom of `app.py` and rebuild.
 
+### Windows Defender false positive
+
+Windows Defender may flag `HabitFlow.exe` as `Wacatac.B!ml`. **This is a false positive.** PyInstaller bundles Python into a self-extracting exe, and Defender's ML model mistakes that pattern for malware — it affects almost every PyInstaller app. The build is done transparently on GitHub Actions (check the [Actions tab](../../actions)); anyone can inspect the source and reproduce it.
+
+To allow it: when Defender blocks the file, click **Actions → Allow on device**. Or go to **Windows Security → Virus & threat protection → Protection history**, find the quarantined item, and restore it.
+
 ## Run from source (Python)
 
 ```bash
