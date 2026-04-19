@@ -57,22 +57,43 @@ Daily-Tracker/
 - **Dashboard** (`/dashboard`): KPIs, monthly progress, per-habit analysis, snapshot stats, a yearly overview chart, and month cards. Use this when you want the big picture, not while doing fast daily entry.
 - **Exports**: CSV export for the current month on the Tracker (`Export daily` is one row per day; `Export month` is a summary line plus a habit-by-date grid). The same exports exist on the Dashboard for whichever month you have selected.
 
-## Requirements
+## Download (no Python required)
 
-- Python 3.10 or newer (3.x supported by Flask is fine).
-- `pip` for dependencies.
+Go to the [Releases](../../releases) page, download `HabitFlow.exe`, and double-click it. The app opens in your default browser automatically. Your data is stored in `%APPDATA%\HabitFlow\habits.db` and survives updates.
 
-## Quick start
+The app tries ports `8050 → 11050 → 12050 → 13050` in order and picks the first free one. If all are taken, edit the `PORTS` list near the bottom of `app.py` and rebuild.
+
+## Run from source (Python)
 
 ```bash
-cd Daily-Tracker
 pip install -r requirements.txt
 python app.py
 ```
 
-Open **http://127.0.0.1:5050** in your browser.
+The terminal prints the URL. Data is stored in `%APPDATA%\HabitFlow\habits.db`.
 
-The first run creates `habits.db` next to `app.py` and seeds a few example habits if the database is empty. You can edit or remove those on the Tracker page.
+## Build the exe locally
+
+```bash
+pip install pyinstaller
+pyinstaller habitflow.spec
+# output: dist/HabitFlow.exe
+```
+
+Double-click `dist/HabitFlow.exe` to test. Close it with Ctrl+C in the terminal or just close the browser — the process will stay running in the background until you kill it from Task Manager or reboot.
+
+## Publish a new release
+
+```bash
+git add .
+git commit -m "your message"
+git push
+
+git tag v1.0.0          # bump this for every release, e.g. v1.0.1, v1.1.0
+git push origin v1.0.0
+```
+
+GitHub Actions builds the exe on its own Windows machine and attaches `HabitFlow.exe` to a new Release automatically (~3–4 minutes). Check the **Actions** tab if something looks wrong.
 
 ## Contributing
 

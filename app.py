@@ -1,11 +1,32 @@
 from flask import Flask, jsonify, request, render_template
 import sqlite3
 import os
+import sys
 from datetime import date, datetime
 import calendar
 
-app = Flask(__name__)
-DB_PATH = os.path.join(os.path.dirname(__file__), 'habits.db')
+
+def _resource(rel):
+    """Resolve a bundled-file path for both dev and PyInstaller one-file builds."""
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
+
+def _data_dir():
+    """Return a writable directory for user data that survives app updates."""
+    if sys.platform == 'win32':
+        base = os.environ.get('APPDATA', os.path.expanduser('~'))
+    else:
+        base = os.path.expanduser('~/.local/share')
+    path = os.path.join(base, 'HabitFlow')
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+app = Flask(__name__,
+            template_folder=_resource('templates'),
+            static_folder=_resource('static'))
+DB_PATH = os.path.join(_data_dir(), 'habits.db')
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -741,5 +762,25 @@ def export_excel(year, month):
 
 
 if __name__ == '__main__':
+    # ── Port configuration ────────────────────────────────────────────────────
+    # Tried in order; the first free one wins.  If all are taken, change these.
+    PORTS = [8050, 11050, 12050, 13050]
+    # ─────────────────────────────────────────────────────────────────────────
+
+    import socket
+
+    def _free_port(candidates):
+        for p in candidates:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                if s.connect_ex(('127.0.0.1', p)) != 0:
+                    return p
+        return candidates[0]
+
     init_db()
-    app.run(debug=True, port=5050)
+    port = _free_port(PORTS)
+    _bundled = getattr(sys, 'frozen', False)
+    if _bundled:
+        import threading
+        import webbrowser
+        threading.Timer(1.5, lambda: webbrowser.open(f'http://127.0.0.1:{port}')).start()
+    app.run(debug=not _bundled, port=port, use_reloader=not _bundled)
