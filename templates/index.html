@@ -1402,5 +1402,12 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
 initTheme();
 init();
 </script>
+<script>
+(function(){
+  function hb(){ fetch('/api/heartbeat',{method:'POST'}).catch(()=>{}); }
+  setInterval(hb, 10000);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) hb(); });
+})();
+</script>
 </body>
 </html>

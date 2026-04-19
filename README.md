@@ -101,6 +101,17 @@ git push origin v1.0.0
 
 GitHub Actions builds the exe on its own Windows machine and attaches `HabitFlow.exe` to a new Release automatically (~3–4 minutes). Check the **Actions** tab if something looks wrong.
 
+## Start fresh (wipe all data)
+
+Your data lives in one file. Delete it and relaunch — the app creates a new empty database with the default habits on next start.
+
+**Location:**
+```
+%APPDATA%\HabitFlow\habits.db
+```
+
+To open that folder directly: press `Win + R`, paste `%APPDATA%\HabitFlow`, hit Enter, then delete `habits.db`.
+
 ## Contributing
 
 Issues and pull requests are welcome. Keep changes focused; match the existing style in `app.py` and the templates. If you add a feature, a short note in this README helps new users.

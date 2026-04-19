@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request, render_template
 import sqlite3
 import os
 import sys
+import time
+import threading
 from datetime import date, datetime
 import calendar
 
@@ -27,6 +29,30 @@ app = Flask(__name__,
             template_folder=_resource('templates'),
             static_folder=_resource('static'))
 DB_PATH = os.path.join(_data_dir(), 'habits.db')
+
+# ── Auto-shutdown when browser tab is closed (exe mode only) ─────────────────
+_last_seen = time.time()
+_IDLE_TIMEOUT = 120  # seconds — browser sends a heartbeat every 10s
+
+
+@app.before_request
+def _refresh_last_seen():
+    global _last_seen
+    _last_seen = time.time()
+
+
+@app.route('/api/heartbeat', methods=['POST'])
+def heartbeat():
+    return '', 204
+
+
+def _idle_watchdog():
+    while True:
+        time.sleep(10)
+        if time.time() - _last_seen > _IDLE_TIMEOUT:
+            os._exit(0)
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -780,7 +806,7 @@ if __name__ == '__main__':
     port = _free_port(PORTS)
     _bundled = getattr(sys, 'frozen', False)
     if _bundled:
-        import threading
         import webbrowser
+        threading.Thread(target=_idle_watchdog, daemon=True).start()
         threading.Timer(1.5, lambda: webbrowser.open(f'http://127.0.0.1:{port}')).start()
     app.run(debug=not _bundled, port=port, use_reloader=not _bundled)
