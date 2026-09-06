@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Numeric version to build, e.g. 1.1.0 (no release is published).'
+        required: false
+        default: '0.0.0'
 
 permissions:
   contents: write
@@ -22,13 +28,128 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pyinstaller
+        run: pip install -r requirements.txt -r requirements-dev.txt pyinstaller pillow
 
-      - name: Build exe
-        run: pyinstaller habitflow.spec
+      - name: Run tests
+        run: python -m pytest tests -q
 
-      - name: Upload to GitHub Release
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Building version $V"
+
+      - name: Generate icon and version resource
+        env:
+          HABITFLOW_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          python packaging/make_icon.py
+          python packaging/make_version.py
+
+      - name: Build app (one-folder)
+        run: pyinstaller --noconfirm packaging/habitflow.spec
+
+      - name: Verify the exe carries an icon and version info
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $exe = (Resolve-Path "dist\HabitFlow\HabitFlow.exe").Path
+          $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($exe)
+          if (-not $ico -or $ico.Width -lt 16) { throw "HabitFlow.exe has no embedded icon" }
+          $v = (Get-Item $exe).VersionInfo
+          if (-not $v.ProductName) { throw "HabitFlow.exe has no version resource" }
+          Write-Host "icon $($ico.Width)x$($ico.Height) | $($v.ProductName) $($v.FileVersion)"
+
+      - name: Smoke-test the built exe
+        shell: pwsh
+        run: |
+          $env:HABITFLOW_DATA_DIR = "$env:RUNNER_TEMP\hf-smoke"
+          $env:HABITFLOW_NO_BROWSER = "1"
+          $p = Start-Process -FilePath "dist\HabitFlow\HabitFlow.exe" -PassThru
+          $ok = $false
+          foreach ($i in 1..30) {
+            Start-Sleep -Seconds 1
+            try {
+              $r = Invoke-RestMethod "http://127.0.0.1:8050/api/health" -TimeoutSec 2
+              if ($r.app -eq "HabitFlow") { $ok = $true; break }
+            } catch { }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "Built exe never answered /api/health" }
+          Write-Host "Built exe is healthy."
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          function Find-ISCC {
+            $roots = @("${env:ProgramFiles(x86)}", $env:ProgramFiles, "$env:LOCALAPPDATA\Programs")
+            foreach ($r in $roots) {
+              if (-not $r) { continue }
+              $hit = Get-ChildItem -Path $r -Filter ISCC.exe -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
+              if ($hit) { return $hit.FullName }
+            }
+            return $null
+          }
+          $iscc = Find-ISCC
+          if (-not $iscc) {
+            Write-Host "Inno Setup not preinstalled; fetching it."
+            choco install innosetup -y --no-progress
+            $iscc = Find-ISCC
+          }
+          if (-not $iscc) { throw "Could not locate ISCC.exe" }
+          Write-Host "Using $iscc"
+          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" "packaging\habitflow.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+          Add-Type -AssemblyName System.Drawing
+          $setup = (Get-ChildItem dist\HabitFlow-Setup-*.exe | Select-Object -First 1).FullName
+          $sico = [System.Drawing.Icon]::ExtractAssociatedIcon($setup)
+          if (-not $sico -or $sico.Width -lt 16) { throw "Installer has no embedded icon" }
+          Write-Host "installer icon $($sico.Width)x$($sico.Height)"
+          Get-ChildItem dist\*.exe | Format-Table Name, Length
+
+      - name: Package the portable folder
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\HabitFlow\* `
+                           -DestinationPath "dist\HabitFlow-${{ steps.ver.outputs.version }}-portable.zip"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: habitflow-${{ steps.ver.outputs.version }}
+          path: |
+            dist/HabitFlow-Setup-*.exe
+            dist/HabitFlow-*-portable.zip
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/HabitFlow.exe
+          files: |
+            dist/HabitFlow-Setup-*.exe
+            dist/HabitFlow-*-portable.zip
           generate_release_notes: true
+          body: |
+            ## Install
+
+            1. Download **HabitFlow-Setup-${{ steps.ver.outputs.version }}.exe** below.
+            2. Double-click it. No admin rights needed — it installs just for you.
+            3. HabitFlow opens in your browser. That's it.
+
+            Prefer no installer? Grab the portable `.zip`, unpack it anywhere and
+            run `HabitFlow.exe` from the folder.
+
+            Your habits stay in `%APPDATA%\HabitFlow\habits.db` on your own machine.
+            Nothing is uploaded anywhere. Updating over the top keeps your history.
+
+            > **SmartScreen note:** this installer is not code-signed (certificates
+            > cost money this project does not take). Windows may show
+            > "Windows protected your PC" — click **More info → Run anyway**.
+            > The build is fully reproducible from source in the Actions tab.

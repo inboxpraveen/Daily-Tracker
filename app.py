@@ -1,26 +1,34 @@
 from flask import Flask, jsonify, request, render_template
+from werkzeug.exceptions import HTTPException
 import sqlite3
 import os
 import sys
 import time
 import threading
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import calendar
+
+APP_NAME = 'HabitFlow'
+APP_VERSION = '1.1.0'
 
 
 def _resource(rel):
-    """Resolve a bundled-file path for both dev and PyInstaller one-file builds."""
+    """Resolve a bundled-file path for both dev and PyInstaller builds."""
     base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, rel)
 
 
 def _data_dir():
     """Return a writable directory for user data that survives app updates."""
-    if sys.platform == 'win32':
-        base = os.environ.get('APPDATA', os.path.expanduser('~'))
+    override = os.environ.get('HABITFLOW_DATA_DIR')
+    if override:
+        path = os.path.abspath(override)
     else:
-        base = os.path.expanduser('~/.local/share')
-    path = os.path.join(base, 'HabitFlow')
+        if sys.platform == 'win32':
+            base = os.environ.get('APPDATA', os.path.expanduser('~'))
+        else:
+            base = os.path.expanduser('~/.local/share')
+        path = os.path.join(base, 'HabitFlow')
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -29,6 +37,7 @@ app = Flask(__name__,
             template_folder=_resource('templates'),
             static_folder=_resource('static'))
 DB_PATH = os.path.join(_data_dir(), 'habits.db')
+LOG_PATH = os.path.join(_data_dir(), 'habitflow.log')
 
 # ── Auto-shutdown when browser tab is closed (exe mode only) ─────────────────
 _last_seen = time.time()
@@ -54,10 +63,59 @@ def _idle_watchdog():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# ── Local-only guard ─────────────────────────────────────────────────────────
+# The server binds to 127.0.0.1, but a hostile web page could still reach it via
+# a rebound DNS name. Only serve requests that arrived addressed to localhost.
+_ALLOWED_HOSTS = {'127.0.0.1', 'localhost', '[::1]', '::1'}
+
+
+@app.before_request
+def _reject_foreign_host():
+    host = (request.host or '').rsplit(':', 1)[0]
+    if host and host not in _ALLOWED_HOSTS:
+        return jsonify({'error': 'HabitFlow only serves localhost'}), 403
+
+
+@app.errorhandler(Exception)
+def _json_errors(err):
+    """Never hand the browser an HTML error page for an /api call.
+
+    Pages keep Flask's normal behaviour — a stray /favicon.ico should be an
+    ordinary 404, not a logged traceback.
+    """
+    if not request.path.startswith('/api/'):
+        if isinstance(err, HTTPException):
+            return err
+        raise err
+    code = err.code if isinstance(err, HTTPException) else 500
+    if code == 500:
+        app.logger.exception('Unhandled error on %s', request.path)
+    message = getattr(err, 'description', None) or str(err) or 'Server error'
+    return jsonify({'error': message}), code
+
+
+@app.route('/api/health')
+def health():
+    return jsonify({'app': APP_NAME, 'version': APP_VERSION, 'db': DB_PATH})
+
+
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=15000')
+    conn.execute('PRAGMA foreign_keys=ON')
     return conn
+
+
+def _add_column(conn, table, column, ddl):
+    """Idempotent ALTER TABLE for databases created by an older version."""
+    cols = {r['name'] for r in conn.execute(f'PRAGMA table_info({table})')}
+    if column not in cols:
+        conn.execute(f'ALTER TABLE {table} ADD COLUMN {column} {ddl}')
+        return True
+    return False
+
 
 def init_db():
     conn = get_db()
@@ -77,7 +135,29 @@ def init_db():
             UNIQUE(habit_id, completion_date),
             FOREIGN KEY (habit_id) REFERENCES habits(id)
         );
+        CREATE INDEX IF NOT EXISTS idx_completions_date ON completions(completion_date);
+        CREATE INDEX IF NOT EXISTS idx_completions_habit ON completions(habit_id, completion_date);
     ''')
+
+    # ── migration: remember *when* a habit stopped being tracked ─────────────
+    # Without this, deleting a habit today silently rewrote every past month's
+    # completion rate. Existing soft-deleted habits are backfilled to the last
+    # day they were actually used, which preserves their real history.
+    if _add_column(conn, 'habits', 'deactivated_at', 'TEXT'):
+        conn.execute('''
+            UPDATE habits SET deactivated_at = COALESCE(
+                (SELECT MAX(completion_date) FROM completions WHERE habit_id = habits.id),
+                created_at, date('now'))
+            WHERE active = 0
+        ''')
+    # Older rows can carry a NULL created_at; stats need a real start date.
+    conn.execute('''
+        UPDATE habits SET created_at = COALESCE(
+            (SELECT MIN(completion_date) FROM completions WHERE habit_id = habits.id),
+            date('now'))
+        WHERE created_at IS NULL OR created_at = ''
+    ''')
+
     # Seed some default habits if empty
     cur = conn.execute('SELECT COUNT(*) FROM habits')
     if cur.fetchone()[0] == 0:
@@ -95,6 +175,72 @@ def init_db():
     conn.commit()
     conn.close()
 
+
+# ── Date / eligibility helpers ───────────────────────────────────────────────
+# A habit only "counts" on days it was actually being tracked: from the day it
+# was created until the day it was removed. Everything below shares these rules
+# so the tracker, dashboard and Excel export can never disagree.
+
+def _month_bounds(year, month):
+    last_day = calendar.monthrange(year, month)[1]
+    return (f'{year:04d}-{month:02d}-01', f'{year:04d}-{month:02d}-{last_day:02d}', last_day)
+
+
+def _period_habits(conn, start, end, include_inactive=True):
+    """Habits that were being tracked at any point between start and end."""
+    if include_inactive:
+        rows = conn.execute(
+            'SELECT * FROM habits '
+            'WHERE COALESCE(created_at, ?) <= ? '
+            '  AND (deactivated_at IS NULL OR deactivated_at >= ?) '
+            'ORDER BY id', (start, end, start)
+        ).fetchall()
+    else:
+        rows = conn.execute('SELECT * FROM habits WHERE active=1 ORDER BY id').fetchall()
+    return [dict(r) for r in rows]
+
+
+def _habit_window(habit, start, end):
+    """The (first, last) date this habit counts for inside start..end."""
+    lo = max(start, habit.get('created_at') or start)
+    hi = end
+    if habit.get('deactivated_at'):
+        hi = min(hi, habit['deactivated_at'])
+    return lo, hi
+
+
+def _days_between(lo, hi):
+    if lo > hi:
+        return 0
+    a = datetime.strptime(lo, '%Y-%m-%d').date()
+    b = datetime.strptime(hi, '%Y-%m-%d').date()
+    return (b - a).days + 1
+
+
+def _habit_goal(habit, start, end):
+    """How many days this habit could have been checked off in the range."""
+    lo, hi = _habit_window(habit, start, end)
+    return _days_between(lo, hi)
+
+
+def _counts_on(habit, day):
+    lo = habit.get('created_at') or day
+    if day < lo:
+        return False
+    if habit.get('deactivated_at') and day > habit['deactivated_at']:
+        return False
+    return True
+
+
+def _elapsed_end(year, month):
+    """Last day of the month that has actually happened yet ('' if it is future)."""
+    start, end, _ = _month_bounds(year, month)
+    today = date.today().isoformat()
+    if today < start:
+        return ''
+    return min(end, today)
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -105,35 +251,70 @@ def dashboard():
     return render_template('dashboard.html')
 
 
-def _month_summary(conn, year, month):
-    """Aggregate counts for one month (same rules as get_stats)."""
-    habits = conn.execute('SELECT * FROM habits WHERE active=1').fetchall()
-    total_habits = len(habits)
-    last_day = calendar.monthrange(year, month)[1]
-    today = date.today()
-    if today.year == year and today.month == month:
-        days_elapsed = today.day
-    elif date(year, month, 1) > today:
-        days_elapsed = 0
-    else:
-        days_elapsed = last_day
-    start = f'{year:04d}-{month:02d}-01'
-    end = f'{year:04d}-{month:02d}-{last_day:02d}'
-    total_possible = total_habits * days_elapsed
-    total_done = conn.execute(
-        'SELECT COUNT(*) FROM completions c JOIN habits h ON c.habit_id=h.id '
-        'WHERE h.active=1 AND completion_date BETWEEN ? AND ?',
-        (start, end)
-    ).fetchone()[0]
-    overall_pct = round((total_done / total_possible * 100) if total_possible > 0 else 0, 1)
+def _month_detail(conn, year, month):
+    """Everything the tracker, dashboard and export need for one month.
+
+    Percentages are per-habit aware: a habit only contributes days between the
+    date it was created and the date it was removed, so adding a habit today
+    does not retroactively ruin last month.
+    """
+    start, end, last_day = _month_bounds(year, month)
+    elapsed_end = _elapsed_end(year, month)
+    habits = _period_habits(conn, start, end)
+
+    done_rows = conn.execute(
+        'SELECT habit_id, completion_date FROM completions '
+        'WHERE completion_date BETWEEN ? AND ?', (start, end)
+    ).fetchall()
+    done_set = {(r['habit_id'], r['completion_date']) for r in done_rows}
+
+    habit_stats = []
+    total_done = 0
+    total_possible = 0
+    for h in habits:
+        goal = _habit_goal(h, start, elapsed_end) if elapsed_end else 0
+        lo, hi = _habit_window(h, start, elapsed_end or start)
+        actual = sum(1 for (hid, d) in done_set
+                     if hid == h['id'] and (elapsed_end and lo <= d <= hi))
+        total_done += actual
+        total_possible += goal
+        habit_stats.append({
+            'id': h['id'], 'name': h['name'], 'emoji': h['emoji'], 'color': h['color'],
+            'created_at': h['created_at'], 'deactivated_at': h.get('deactivated_at'),
+            'active': h['active'],
+            'goal': goal, 'actual': actual,
+            'pct': round((actual / goal * 100) if goal else 0, 1),
+        })
+
+    day_stats = []
+    for d in range(1, last_day + 1):
+        day_str = f'{year:04d}-{month:02d}-{d:02d}'
+        eligible = [h for h in habits if _counts_on(h, day_str)]
+        done = sum(1 for h in eligible if (h['id'], day_str) in done_set)
+        day_stats.append({
+            'day': d, 'date': day_str, 'done': done, 'total': len(eligible),
+            'pct': round((done / len(eligible) * 100) if eligible else 0, 1),
+        })
+
+    days_elapsed = _days_between(start, elapsed_end) if elapsed_end else 0
     return {
-        'total_habits': total_habits,
+        'total_habits': len(habits),
         'last_day': last_day,
         'days_elapsed': days_elapsed,
         'total_done': total_done,
         'total_possible': total_possible,
-        'overall_pct': overall_pct,
+        'overall_pct': round((total_done / total_possible * 100) if total_possible else 0, 1),
+        'habit_stats': habit_stats,
+        'day_stats': day_stats,
+        'habits': habits,
     }
+
+
+def _month_summary(conn, year, month):
+    """Headline numbers for one month, without the per-day/per-habit detail."""
+    d = _month_detail(conn, year, month)
+    return {k: d[k] for k in ('total_habits', 'last_day', 'days_elapsed',
+                              'total_done', 'total_possible', 'overall_pct')}
 
 
 @app.route('/api/stats/year/<int:year>', methods=['GET'])
@@ -154,150 +335,489 @@ def get_year_stats(year):
     conn.close()
     return jsonify({'year': year, 'months': months})
 
+def _payload():
+    """Request body as a dict, whatever the client sent."""
+    return request.get_json(silent=True) or {}
+
+
+_ISO = '%Y-%m-%d'
+
+
+def _valid_date(s):
+    try:
+        datetime.strptime(s, _ISO)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def _clean_color(value, fallback='#22c55e'):
+    v = str(value or '').strip()
+    if len(v) == 7 and v[0] == '#':
+        try:
+            int(v[1:], 16)
+            return v.lower()
+        except ValueError:
+            pass
+    return fallback
+
+
 @app.route('/api/habits', methods=['GET'])
 def get_habits():
+    """Active habits, or everything tracked during ?year=&month= if given.
+
+    Passing a month matters for history: a habit you removed in March should
+    still show up when you look back at February.
+    """
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
     conn = get_db()
-    habits = conn.execute('SELECT * FROM habits WHERE active=1 ORDER BY id').fetchall()
+    if year and month and 1 <= month <= 12:
+        start, end, _ = _month_bounds(year, month)
+        habits = _period_habits(conn, start, end)
+    else:
+        habits = _period_habits(conn, '', '', include_inactive=False)
     conn.close()
-    return jsonify([dict(h) for h in habits])
+    return jsonify(habits)
+
 
 @app.route('/api/habits', methods=['POST'])
 def add_habit():
-    data = request.json
-    name = data.get('name', '').strip()
-    emoji = data.get('emoji', '✅')
-    color = data.get('color', '#22c55e')
+    data = _payload()
+    name = str(data.get('name', '')).strip()
     if not name:
-        return jsonify({'error': 'Name required'}), 400
+        return jsonify({'error': 'Please give the habit a name'}), 400
+    emoji = str(data.get('emoji') or '✅')[:8]
+    color = _clean_color(data.get('color'))
+    created = data.get('created_at')
+    if not _valid_date(created):
+        created = date.today().isoformat()
     conn = get_db()
-    cur = conn.execute('INSERT INTO habits (name, emoji, color) VALUES (?,?,?)', (name, emoji, color))
+    cur = conn.execute(
+        'INSERT INTO habits (name, emoji, color, created_at) VALUES (?,?,?,?)',
+        (name[:80], emoji, color, created))
     conn.commit()
-    habit_id = cur.lastrowid
-    habit = conn.execute('SELECT * FROM habits WHERE id=?', (habit_id,)).fetchone()
+    habit = conn.execute('SELECT * FROM habits WHERE id=?', (cur.lastrowid,)).fetchone()
     conn.close()
     return jsonify(dict(habit)), 201
 
+
 @app.route('/api/habits/<int:habit_id>', methods=['DELETE'])
 def delete_habit(habit_id):
+    """Stop tracking a habit from today on, keeping its history intact."""
     conn = get_db()
-    conn.execute('UPDATE habits SET active=0 WHERE id=?', (habit_id,))
+    row = conn.execute('SELECT id FROM habits WHERE id=?', (habit_id,)).fetchone()
+    if row is None:
+        conn.close()
+        return jsonify({'error': 'Habit not found'}), 404
+    conn.execute('UPDATE habits SET active=0, deactivated_at=? WHERE id=?',
+                 (date.today().isoformat(), habit_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
 
+
 @app.route('/api/habits/<int:habit_id>', methods=['PUT'])
 def update_habit(habit_id):
-    data = request.json
+    data = _payload()
     conn = get_db()
-    conn.execute('UPDATE habits SET name=?, emoji=?, color=? WHERE id=?',
-                 (data['name'], data['emoji'], data['color'], habit_id))
+    habit = conn.execute('SELECT * FROM habits WHERE id=?', (habit_id,)).fetchone()
+    if habit is None:
+        conn.close()
+        return jsonify({'error': 'Habit not found'}), 404
+
+    name = str(data.get('name', habit['name'])).strip() or habit['name']
+    emoji = str(data.get('emoji') or habit['emoji'])[:8]
+    color = _clean_color(data.get('color'), habit['color'])
+    created = data.get('created_at')
+    if not _valid_date(created):
+        created = habit['created_at']
+    if created > date.today().isoformat():
+        created = date.today().isoformat()
+
+    conn.execute('UPDATE habits SET name=?, emoji=?, color=?, created_at=? WHERE id=?',
+                 (name[:80], emoji, color, created, habit_id))
     conn.commit()
     habit = conn.execute('SELECT * FROM habits WHERE id=?', (habit_id,)).fetchone()
     conn.close()
     return jsonify(dict(habit))
 
+
+@app.route('/api/habits/<int:habit_id>/restore', methods=['POST'])
+def restore_habit(habit_id):
+    """Bring a removed habit back into daily tracking."""
+    conn = get_db()
+    row = conn.execute('SELECT id FROM habits WHERE id=?', (habit_id,)).fetchone()
+    if row is None:
+        conn.close()
+        return jsonify({'error': 'Habit not found'}), 404
+    conn.execute('UPDATE habits SET active=1, deactivated_at=NULL WHERE id=?', (habit_id,))
+    conn.commit()
+    habit = conn.execute('SELECT * FROM habits WHERE id=?', (habit_id,)).fetchone()
+    conn.close()
+    return jsonify(dict(habit))
+
+
 @app.route('/api/completions/<int:year>/<int:month>', methods=['GET'])
 def get_completions(year, month):
     conn = get_db()
-    # Get all completions for this month
-    start = f'{year:04d}-{month:02d}-01'
-    last_day = calendar.monthrange(year, month)[1]
-    end = f'{year:04d}-{month:02d}-{last_day:02d}'
+    start, end, _ = _month_bounds(year, month)
     rows = conn.execute(
         'SELECT habit_id, completion_date FROM completions WHERE completion_date BETWEEN ? AND ?',
         (start, end)
     ).fetchall()
     conn.close()
-    result = {}
-    for row in rows:
-        key = f"{row['habit_id']}_{row['completion_date']}"
-        result[key] = True
-    return jsonify(result)
+    return jsonify({f"{r['habit_id']}_{r['completion_date']}": True for r in rows})
+
 
 @app.route('/api/completions/toggle', methods=['POST'])
 def toggle_completion():
-    data = request.json
-    habit_id = data['habit_id']
-    comp_date = data['date']  # YYYY-MM-DD
+    data = _payload()
+    try:
+        habit_id = int(data.get('habit_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'habit_id must be a number'}), 400
+    comp_date = str(data.get('date', ''))
+    if not _valid_date(comp_date):
+        return jsonify({'error': 'date must look like YYYY-MM-DD'}), 400
+    if comp_date > date.today().isoformat():
+        return jsonify({'error': "You can't check off a day that hasn't happened yet"}), 400
+
     conn = get_db()
+    habit = conn.execute('SELECT * FROM habits WHERE id=?', (habit_id,)).fetchone()
+    if habit is None:
+        conn.close()
+        return jsonify({'error': 'Habit not found'}), 404
+    habit = dict(habit)
+    if not _counts_on(habit, comp_date):
+        conn.close()
+        return jsonify({'error': f"{habit['name']} wasn't being tracked on that day"}), 400
+
     existing = conn.execute(
         'SELECT id FROM completions WHERE habit_id=? AND completion_date=?',
         (habit_id, comp_date)
     ).fetchone()
     if existing:
-        conn.execute('DELETE FROM completions WHERE habit_id=? AND completion_date=?', (habit_id, comp_date))
+        conn.execute('DELETE FROM completions WHERE habit_id=? AND completion_date=?',
+                     (habit_id, comp_date))
         completed = False
     else:
-        conn.execute('INSERT INTO completions (habit_id, completion_date) VALUES (?,?)', (habit_id, comp_date))
+        conn.execute('INSERT INTO completions (habit_id, completion_date) VALUES (?,?)',
+                     (habit_id, comp_date))
         completed = True
     conn.commit()
     conn.close()
     return jsonify({'completed': completed, 'habit_id': habit_id, 'date': comp_date})
 
+
 @app.route('/api/stats/<int:year>/<int:month>', methods=['GET'])
 def get_stats(year, month):
     conn = get_db()
-    habits = conn.execute('SELECT * FROM habits WHERE active=1').fetchall()
-    total_habits = len(habits)
-    last_day = calendar.monthrange(year, month)[1]
-    today = date.today()
-    
-    # Days elapsed in month (up to today)
-    if today.year == year and today.month == month:
-        days_elapsed = today.day
-    elif date(year, month, 1) > today:
-        days_elapsed = 0
-    else:
-        days_elapsed = last_day
-
-    start = f'{year:04d}-{month:02d}-01'
-    end = f'{year:04d}-{month:02d}-{last_day:02d}'
-    
-    total_possible = total_habits * days_elapsed
-    total_done = conn.execute(
-        'SELECT COUNT(*) FROM completions c JOIN habits h ON c.habit_id=h.id WHERE h.active=1 AND completion_date BETWEEN ? AND ?',
-        (start, end)
-    ).fetchone()[0]
-    
-    overall_pct = round((total_done / total_possible * 100) if total_possible > 0 else 0, 1)
-    
-    # Per-habit stats
-    habit_stats = []
-    for h in habits:
-        done = conn.execute(
-            'SELECT COUNT(*) FROM completions WHERE habit_id=? AND completion_date BETWEEN ? AND ?',
-            (h['id'], start, end)
-        ).fetchone()[0]
-        habit_stats.append({
-            'id': h['id'],
-            'name': h['name'],
-            'emoji': h['emoji'],
-            'color': h['color'],
-            'goal': days_elapsed,
-            'actual': done,
-            'pct': round((done / days_elapsed * 100) if days_elapsed > 0 else 0, 1)
-        })
-    
-    # Per-day stats
-    day_stats = []
-    for d in range(1, last_day + 1):
-        day_str = f'{year:04d}-{month:02d}-{d:02d}'
-        done = conn.execute(
-            'SELECT COUNT(*) FROM completions c JOIN habits h ON c.habit_id=h.id WHERE h.active=1 AND completion_date=?',
-            (day_str,)
-        ).fetchone()[0]
-        day_stats.append({'day': d, 'done': done, 'total': total_habits,
-                          'pct': round((done / total_habits * 100) if total_habits > 0 else 0)})
-    
+    detail = _month_detail(conn, year, month)
     conn.close()
+    detail.pop('habits', None)
+    return jsonify(detail)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# INSIGHTS — turn the raw ticks into things worth acting on
+# ═══════════════════════════════════════════════════════════════════════════
+
+WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                 'Friday', 'Saturday', 'Sunday']
+MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+               'July', 'August', 'September', 'October', 'November', 'December']
+
+STREAK_WINDOW_DAYS = 90   # how far back the weekday/rhythm analysis looks
+
+
+def _streaks(habit, done_dates, today):
+    """Current and best run of consecutive days for one habit.
+
+    The current streak survives a missing tick for *today* — the day is not
+    over yet. It is reported as `at_risk` instead, which is what actually
+    nudges someone to open the app and finish the day.
+    """
+    if not done_dates:
+        return {'current': 0, 'best': 0, 'at_risk': False, 'done_today': False}
+
+    done_today = today.isoformat() in done_dates
+    anchor = today if done_today else today - timedelta(days=1)
+    current = 0
+    if anchor.isoformat() in done_dates:
+        d = anchor
+        while d.isoformat() in done_dates:
+            current += 1
+            d -= timedelta(days=1)
+
+    best = run = 0
+    prev = None
+    for ds in sorted(done_dates):
+        d = datetime.strptime(ds, _ISO).date()
+        run = run + 1 if prev is not None and (d - prev).days == 1 else 1
+        best = max(best, run)
+        prev = d
+
+    return {
+        'current': current,
+        'best': max(best, current),
+        'at_risk': current > 0 and not done_today,
+        'done_today': done_today,
+    }
+
+
+def _weekday_rhythm(habits, done_by_habit, today):
+    """Completion rate per day of the week over the recent window."""
+    done = [0] * 7
+    possible = [0] * 7
+    start = today - timedelta(days=STREAK_WINDOW_DAYS - 1)
+    for i in range(STREAK_WINDOW_DAYS):
+        d = start + timedelta(days=i)
+        ds = d.isoformat()
+        wd = d.weekday()
+        for h in habits:
+            if not _counts_on(h, ds):
+                continue
+            possible[wd] += 1
+            if ds in done_by_habit.get(h['id'], ()):
+                done[wd] += 1
+    rows = [{
+        'weekday': WEEKDAY_NAMES[i],
+        'short': WEEKDAY_NAMES[i][:3],
+        'done': done[i],
+        'possible': possible[i],
+        'pct': round((done[i] / possible[i] * 100) if possible[i] else 0, 1),
+    } for i in range(7)]
+    rated = [r for r in rows if r['possible'] >= 2]
+    best = max(rated, key=lambda r: r['pct']) if rated else None
+    worst = min(rated, key=lambda r: r['pct']) if rated else None
+    return {'days': rows, 'best': best, 'worst': worst,
+            'window_days': STREAK_WINDOW_DAYS}
+
+
+@app.route('/api/insights/<int:year>/<int:month>')
+def get_insights(year, month):
+    if not 1 <= month <= 12:
+        return jsonify({'error': 'Month must be 1-12'}), 400
+
+    today = date.today()
+    today_str = today.isoformat()
+    conn = get_db()
+
+    detail = _month_detail(conn, year, month)
+    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+    prev = _month_summary(conn, prev_year, prev_month)
+
+    all_habits = [dict(r) for r in conn.execute('SELECT * FROM habits ORDER BY id')]
+    done_by_habit = {}
+    for r in conn.execute('SELECT habit_id, completion_date FROM completions'):
+        done_by_habit.setdefault(r['habit_id'], set()).add(r['completion_date'])
+    conn.close()
+
+    live = [h for h in all_habits if h['active']]
+
+    # ── streaks ──────────────────────────────────────────────────────────
+    streaks = []
+    for h in live:
+        s = _streaks(h, done_by_habit.get(h['id'], set()), today)
+        streaks.append({
+            'id': h['id'], 'name': h['name'], 'emoji': h['emoji'], 'color': h['color'],
+            **s,
+        })
+    streaks.sort(key=lambda s: (-s['current'], -s['best'], s['name']))
+
+    # ── today ────────────────────────────────────────────────────────────
+    due = [h for h in live if _counts_on(h, today_str)]
+    done_today = [h for h in due if today_str in done_by_habit.get(h['id'], ())]
+    remaining = [{'id': h['id'], 'name': h['name'], 'emoji': h['emoji'], 'color': h['color']}
+                 for h in due if today_str not in done_by_habit.get(h['id'], ())]
+    today_block = {
+        'date': today_str,
+        'done': len(done_today),
+        'total': len(due),
+        'pct': round((len(done_today) / len(due) * 100) if due else 0, 1),
+        'remaining': remaining,
+    }
+
+    rhythm = _weekday_rhythm(all_habits, done_by_habit, today)
+
+    # ── habit standouts for the viewed month (ignore barely-tracked ones) ──
+    rated = [h for h in detail['habit_stats'] if h['goal'] >= 3]
+    top = max(rated, key=lambda h: h['pct']) if rated else None
+    weak = min(rated, key=lambda h: h['pct']) if rated else None
+
+    perfect_days = sum(1 for d in detail['day_stats']
+                       if d['total'] and d['done'] == d['total'])
+    active_days = sum(1 for d in detail['day_stats'] if d['done'] > 0)
+    momentum = round(detail['overall_pct'] - prev['overall_pct'], 1)
+
+    # ── plain-language highlights ────────────────────────────────────────
+    highlights = []
+    leader = streaks[0] if streaks else None
+    if leader and leader['current'] >= 2:
+        if leader['current'] >= leader['best']:
+            highlights.append({
+                'icon': '🔥', 'tone': 'good',
+                'text': f"{leader['current']}-day streak on {leader['name']} — "
+                        f"your longest run yet. Don't break it today.",
+            })
+        else:
+            gap = leader['best'] - leader['current']
+            highlights.append({
+                'icon': '🔥', 'tone': 'good',
+                'text': f"{leader['current']}-day streak on {leader['name']}, "
+                        f"{gap} day{'s' if gap != 1 else ''} off your record of {leader['best']}.",
+            })
+
+    at_risk = [s for s in streaks if s['at_risk']]
+    if at_risk:
+        names = ', '.join(s['name'] for s in at_risk[:3])
+        more = f" (+{len(at_risk) - 3} more)" if len(at_risk) > 3 else ''
+        highlights.append({
+            'icon': '⏳', 'tone': 'warn',
+            'text': f"Streaks on the line today: {names}{more}. "
+                    f"One tick each keeps them alive.",
+        })
+    elif today_block['total'] and today_block['done'] == today_block['total']:
+        highlights.append({
+            'icon': '🏅', 'tone': 'good',
+            'text': f"Every habit is checked off today. That is a perfect day — "
+                    f"number {perfect_days} this month.",
+        })
+    elif today_block['remaining']:
+        left = len(today_block['remaining'])
+        highlights.append({
+            'icon': '📌', 'tone': 'info',
+            'text': f"{left} habit{'s' if left != 1 else ''} still open today: "
+                    + ', '.join(h['name'] for h in today_block['remaining'][:3]) + '.',
+        })
+
+    if rhythm['best'] and rhythm['worst'] and rhythm['best']['weekday'] != rhythm['worst']['weekday']:
+        spread = rhythm['best']['pct'] - rhythm['worst']['pct']
+        if spread >= 15:
+            highlights.append({
+                'icon': '📅', 'tone': 'info',
+                'text': f"{rhythm['worst']['weekday']}s are your weak spot "
+                        f"({rhythm['worst']['pct']}%) versus {rhythm['best']['weekday']}s "
+                        f"({rhythm['best']['pct']}%). Plan a lighter {rhythm['worst']['weekday']} routine.",
+            })
+
+    if prev['total_possible'] and detail['total_possible']:
+        if momentum >= 5:
+            highlights.append({
+                'icon': '📈', 'tone': 'good',
+                'text': f"{MONTH_NAMES[month]} is running {momentum} points ahead of "
+                        f"{MONTH_NAMES[prev_month]} ({detail['overall_pct']}% vs {prev['overall_pct']}%).",
+            })
+        elif momentum <= -5:
+            highlights.append({
+                'icon': '📉', 'tone': 'warn',
+                'text': f"{MONTH_NAMES[month]} is {abs(momentum)} points behind "
+                        f"{MONTH_NAMES[prev_month]} ({detail['overall_pct']}% vs {prev['overall_pct']}%). "
+                        f"Pick one habit to defend.",
+            })
+
+    if weak and weak['pct'] < 50 and (not top or weak['id'] != top['id']):
+        highlights.append({
+            'icon': '🎯', 'tone': 'warn',
+            'text': f"{weak['name']} is the one dragging the month down "
+                    f"({weak['actual']}/{weak['goal']}, {weak['pct']}%). "
+                    f"Make it smaller rather than dropping it.",
+        })
+    if top and top['pct'] >= 80:
+        highlights.append({
+            'icon': '⭐', 'tone': 'good',
+            'text': f"{top['name']} is locked in at {top['pct']}% "
+                    f"({top['actual']}/{top['goal']} days). It is basically automatic now.",
+        })
+
+    if not highlights:
+        highlights.append({
+            'icon': '🌱', 'tone': 'info',
+            'text': 'Check off a few days and HabitFlow will start pointing out '
+                    'your streaks, strong days and weak spots here.',
+        })
+
     return jsonify({
-        'overall_pct': overall_pct,
-        'total_done': total_done,
-        'total_possible': total_possible,
-        'days_elapsed': days_elapsed,
-        'habit_stats': habit_stats,
-        'day_stats': day_stats
+        'year': year,
+        'month': month,
+        'month_name': MONTH_NAMES[month],
+        'today': today_block,
+        'streaks': streaks,
+        'rhythm': rhythm,
+        'top_habit': top,
+        'weak_habit': weak,
+        'perfect_days': perfect_days,
+        'active_days': active_days,
+        'overall_pct': detail['overall_pct'],
+        'prev_pct': prev['overall_pct'],
+        'momentum': momentum,
+        'highlights': highlights,
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# BACKUP / RESTORE — your data should never be trapped in one .db file
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.route('/api/backup')
+def backup():
+    from flask import send_file
+    import io
+    import json
+
+    conn = get_db()
+    habits = [dict(r) for r in conn.execute('SELECT * FROM habits ORDER BY id')]
+    completions = [dict(r) for r in conn.execute(
+        'SELECT habit_id, completion_date FROM completions ORDER BY completion_date, habit_id')]
+    conn.close()
+
+    payload = {
+        'app': APP_NAME,
+        'version': APP_VERSION,
+        'exported_at': datetime.now().isoformat(timespec='seconds'),
+        'habits': habits,
+        'completions': completions,
+    }
+    buf = io.BytesIO(json.dumps(payload, indent=2, ensure_ascii=False).encode('utf-8'))
+    buf.seek(0)
+    return send_file(buf, mimetype='application/json', as_attachment=True,
+                     download_name=f'habitflow-backup-{date.today().isoformat()}.json')
+
+
+@app.route('/api/restore', methods=['POST'])
+def restore():
+    """Replace everything with a previously downloaded backup file."""
+    data = _payload()
+    habits = data.get('habits')
+    completions = data.get('completions')
+    if not isinstance(habits, list) or not isinstance(completions, list):
+        return jsonify({'error': 'That does not look like a HabitFlow backup file'}), 400
+
+    conn = get_db()
+    try:
+        with conn:
+            conn.execute('DELETE FROM completions')
+            conn.execute('DELETE FROM habits')
+            for h in habits:
+                created = h.get('created_at')
+                conn.execute(
+                    'INSERT INTO habits (id, name, emoji, color, created_at, active, deactivated_at) '
+                    'VALUES (?,?,?,?,?,?,?)',
+                    (h.get('id'), str(h.get('name', 'Habit'))[:80], str(h.get('emoji') or '✅')[:8],
+                     _clean_color(h.get('color')),
+                     created if _valid_date(created) else date.today().isoformat(),
+                     1 if h.get('active', 1) else 0,
+                     h.get('deactivated_at') if _valid_date(h.get('deactivated_at')) else None))
+            for c in completions:
+                if _valid_date(c.get('completion_date')):
+                    conn.execute('INSERT OR IGNORE INTO completions (habit_id, completion_date) '
+                                 'VALUES (?,?)', (c.get('habit_id'), c['completion_date']))
+    except sqlite3.Error as exc:
+        conn.close()
+        return jsonify({'error': f'Restore failed: {exc}'}), 400
+    conn.close()
+    return jsonify({'success': True, 'habits': len(habits), 'completions': len(completions)})
+
 
 @app.route('/api/export/<int:year>/<int:month>')
 def export_excel(year, month):
@@ -310,27 +830,22 @@ def export_excel(year, month):
 
     from flask import send_file
 
-    MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                   'July', 'August', 'September', 'October', 'November', 'December']
+    if not 1 <= month <= 12:
+        return jsonify({'error': 'Month must be 1-12'}), 400
+
     DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
     conn       = get_db()
-    habits     = [dict(h) for h in conn.execute('SELECT * FROM habits WHERE active=1 ORDER BY id').fetchall()]
+    detail     = _month_detail(conn, year, month)
+    habits     = detail['habits']
     n_habits   = len(habits)
-    last_day   = calendar.monthrange(year, month)[1]
+    last_day   = detail['last_day']
     today_d    = date.today()
     month_name = MONTH_NAMES[month]
     today_str  = today_d.strftime('%Y-%m-%d')
+    days_elapsed = detail['days_elapsed']
 
-    if today_d.year == year and today_d.month == month:
-        days_elapsed = today_d.day
-    elif date(year, month, 1) > today_d:
-        days_elapsed = 0
-    else:
-        days_elapsed = last_day
-
-    start = f'{year:04d}-{month:02d}-01'
-    end   = f'{year:04d}-{month:02d}-{last_day:02d}'
+    start, end, _ = _month_bounds(year, month)
 
     # ── raw completions set ───────────────────────────────────────
     completions = {
@@ -341,30 +856,12 @@ def export_excel(year, month):
         ).fetchall()
     }
 
-    # ── per-day stats ─────────────────────────────────────────────
-    day_stats = []
-    for d in range(1, last_day + 1):
-        ds   = f'{year:04d}-{month:02d}-{d:02d}'
-        done = conn.execute(
-            'SELECT COUNT(*) FROM completions c JOIN habits h ON c.habit_id=h.id '
-            'WHERE h.active=1 AND completion_date=?', (ds,)
-        ).fetchone()[0]
-        pct = round((done / n_habits * 100) if n_habits else 0, 1)
-        day_stats.append({'day': d, 'date': ds, 'done': done, 'pct': pct})
+    day_stats   = detail['day_stats']
+    habit_stats = [{**h, 'done': h['actual']} for h in detail['habit_stats']]
 
-    # ── per-habit stats ───────────────────────────────────────────
-    habit_stats = []
-    for h in habits:
-        done = conn.execute(
-            'SELECT COUNT(*) FROM completions WHERE habit_id=? AND completion_date BETWEEN ? AND ?',
-            (h['id'], start, end)
-        ).fetchone()[0]
-        pct = round((done / days_elapsed * 100) if days_elapsed else 0, 1)
-        habit_stats.append({**h, 'done': done, 'goal': days_elapsed, 'pct': pct})
-
-    total_possible = n_habits * days_elapsed
-    total_done     = sum(h['done'] for h in habit_stats)
-    overall_pct    = round((total_done / total_possible * 100) if total_possible else 0, 1)
+    total_possible = detail['total_possible']
+    total_done     = detail['total_done']
+    overall_pct    = detail['overall_pct']
 
     # ── full-year monthly data ────────────────────────────────────
     year_data = []
@@ -508,7 +1005,7 @@ def export_excel(year, month):
         ws1.write(r, 0, ds['day'],  fc)
         ws1.write(r, 1, ds['date'], fl)
         ws1.write(r, 2, ds['done'], fc)
-        ws1.write(r, 3, n_habits,   fc)
+        ws1.write(r, 3, ds['total'], fc)
         ws1.write(r, 4, ds['pct'],  pct_fmt(ds['pct']))
 
     daily_data_end = 8 + last_day - 1   # 0-indexed last data row
@@ -666,7 +1163,8 @@ def export_excel(year, month):
             else:
                 ws2.write(r, d, '', f_empty_a if alt else f_empty)
 
-        rate = round((done_count / days_elapsed * 100) if days_elapsed else 0, 1)
+        goal = h.get('goal', days_elapsed)
+        rate = round((done_count / goal * 100) if goal else 0, 1)
         ws2.write(r, last_day + 1, done_count, f_ftnum)
         ws2.write(r, last_day + 2, f'{rate}%',  pct_fmt(rate))
 
@@ -787,26 +1285,100 @@ def export_excel(year, month):
     )
 
 
-if __name__ == '__main__':
-    # ── Port configuration ────────────────────────────────────────────────────
-    # Tried in order; the first free one wins.  If all are taken, change these.
-    PORTS = [8050, 11050, 12050, 13050]
-    # ─────────────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════
+# STARTUP
+# ═══════════════════════════════════════════════════════════════════════════
 
+# Tried in order; the first usable one wins.
+PORTS = [8050, 11050, 12050, 13050]
+
+
+def _probe(port):
+    """Is HabitFlow already serving on this port? -> 'ours' | 'busy' | 'free'."""
     import socket
+    import json
+    from urllib.request import urlopen
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.4)
+        if s.connect_ex(('127.0.0.1', port)) != 0:
+            return 'free'
+    try:
+        with urlopen(f'http://127.0.0.1:{port}/api/health', timeout=1.5) as resp:
+            if json.loads(resp.read().decode('utf-8')).get('app') == APP_NAME:
+                return 'ours'
+    except Exception:
+        pass
+    return 'busy'
 
-    def _free_port(candidates):
-        for p in candidates:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                if s.connect_ex(('127.0.0.1', p)) != 0:
-                    return p
-        return candidates[0]
+
+def _choose_port():
+    """Reuse a running HabitFlow instead of starting a second copy."""
+    for p in PORTS:
+        state = _probe(p)
+        if state == 'ours':
+            return p, True
+        if state == 'free':
+            return p, False
+    return PORTS[0], False
+
+
+def _report_fatal(exc):
+    """A windowed exe fails silently otherwise — leave a trail the user can find."""
+    import traceback
+    detail = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    try:
+        with open(LOG_PATH, 'a', encoding='utf-8') as fh:
+            fh.write(f'\n===== {datetime.now().isoformat(timespec="seconds")} =====\n{detail}')
+    except OSError:
+        pass
+    try:
+        sys.stderr.write(detail)
+    except Exception:
+        pass
+    if sys.platform == 'win32' and getattr(sys, 'frozen', False):
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                f'{APP_NAME} could not start.\n\n{exc}\n\n'
+                f'Details were written to:\n{LOG_PATH}',
+                f'{APP_NAME} {APP_VERSION}', 0x10)
+        except Exception:
+            pass
+
+
+def main():
+    bundled = getattr(sys, 'frozen', False)
+    open_browser = os.environ.get('HABITFLOW_NO_BROWSER') != '1'
 
     init_db()
-    port = _free_port(PORTS)
-    _bundled = getattr(sys, 'frozen', False)
-    if _bundled:
-        import webbrowser
+    port, already_running = _choose_port()
+    url = f'http://127.0.0.1:{port}'
+
+    if already_running:
+        # A second double-click should raise the window you already have.
+        print(f'{APP_NAME} is already running at {url} — opening it.')
+        if open_browser:
+            import webbrowser
+            webbrowser.open(url)
+        return
+
+    print(f'{APP_NAME} {APP_VERSION} running at {url}')
+    print(f'Your data: {DB_PATH}')
+    if bundled:
         threading.Thread(target=_idle_watchdog, daemon=True).start()
-        threading.Timer(1.5, lambda: webbrowser.open(f'http://127.0.0.1:{port}')).start()
-    app.run(debug=not _bundled, port=port, use_reloader=not _bundled)
+    if open_browser:
+        import webbrowser
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    app.run(host='127.0.0.1', port=port,
+            debug=not bundled, use_reloader=not bundled)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as _exc:   # noqa: BLE001 - last line of defence
+        _report_fatal(_exc)
+        sys.exit(1)

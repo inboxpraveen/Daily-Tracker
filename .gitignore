@@ -222,3 +222,9 @@ habits.db
 *.db-trace-lock
 *.db-trace-wal
 *.db-trace-shm
+
+# HabitFlow packaging — these are sources, not build output
+!packaging/
+!packaging/*.spec
+packaging/version_info.txt
+.buildvenv/
