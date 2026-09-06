@@ -75,6 +75,7 @@
 
   /* ─── Reset & Base ──────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   html { font-size: 15px; scroll-behavior: smooth; }
   body {
     font-family: var(--font);
@@ -226,12 +227,6 @@
   }
   .btn-dashboard:hover { background: var(--accent-hover); border-color: var(--accent-hover); transform: translateY(-1px); }
 
-  .btn-export {
-    background: var(--green-light);
-    color: var(--green-text);
-    border: 1px solid transparent;
-  }
-  .btn-export:hover { opacity: .88; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.22); }
 
   /* ─── Theme Toggle ──────────────────────────────────────────── */
   .theme-btn {
@@ -535,6 +530,137 @@
     color: var(--text);
   }
 
+  /* ─── What this means (highlights) ───────────────────────────── */
+  .highlights { display: flex; flex-direction: column; gap: 8px; }
+  .highlight {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 13px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border-light);
+    font-size: .82rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .highlight.good { background: var(--green-light); border-color: transparent; color: var(--green-text); }
+  .highlight.warn { background: var(--amber-light); border-color: transparent; color: var(--amber-text); }
+  .highlight .icon { flex-shrink: 0; font-size: .95rem; line-height: 1.35; }
+
+  /* ─── Streak table ───────────────────────────────────────────── */
+  .streak-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .streak-row:last-child { border-bottom: none; }
+  .streak-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .79rem;
+    font-weight: 500;
+    min-width: 0;
+  }
+  .streak-name span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .streak-current {
+    font-family: var(--mono);
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .streak-current.hot  { color: var(--green); }
+  .streak-current.risk { color: var(--amber); }
+  .streak-current.cold { color: var(--text-3); }
+  .streak-best {
+    font-size: .66rem;
+    font-family: var(--mono);
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  /* ─── Weekday rhythm ─────────────────────────────────────────── */
+  .rhythm {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    align-items: end;
+    margin-top: 4px;
+  }
+  .rhythm-day { text-align: center; }
+  .rhythm-bar-wrap {
+    height: 76px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+  .rhythm-bar {
+    width: 74%;
+    min-height: 3px;
+    border-radius: 5px 5px 2px 2px;
+    transition: height .4s var(--ease);
+  }
+  .rhythm-label {
+    font-size: .62rem;
+    font-weight: 700;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .rhythm-pct {
+    font-size: .6rem;
+    font-family: var(--mono);
+    color: var(--text-2);
+    margin-top: 1px;
+  }
+  .rhythm-caption {
+    font-size: .7rem;
+    color: var(--text-3);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  /* ─── Dropdown menu ──────────────────────────────────────────── */
+  .menu-wrap { position: relative; flex-shrink: 0; }
+  .menu {
+    /* fixed, not absolute: .header-right clips overflow and would hide it */
+    position: fixed;
+    min-width: 232px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    padding: 5px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .menu button {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    transition: background .12s;
+  }
+  .menu button:hover { background: var(--surface2); }
+  .menu hr { border: none; border-top: 1px solid var(--border-light); margin: 4px 2px; }
+
   /* ─── Toast ──────────────────────────────────────────────────── */
   .toast-wrap {
     position: fixed;
@@ -655,10 +781,16 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
           Tracker
         </a>
-        <button type="button" class="btn btn-export" id="exportBtn" title="Export formatted Excel workbook for the focused month">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Excel
+      </div>
+      <div class="menu-wrap">
+        <button type="button" class="theme-btn" id="dataBtn" title="Export and backup" aria-haspopup="true" aria-expanded="false">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
+        <div class="menu" id="dataMenu" hidden role="menu">
+          <button type="button" data-act="export" role="menuitem">📊 Export this month to Excel</button>
+          <button type="button" data-act="backup" role="menuitem">💾 Download a backup</button>
+          <button type="button" data-act="where" role="menuitem">📁 Where is my data?</button>
+        </div>
       </div>
       <div class="month-nav">
         <button type="button" id="prevYear" title="Previous year">
@@ -674,6 +806,20 @@
       </button>
     </div>
   </header>
+
+  <!-- ── What this means ─────────────────────────────────────────── -->
+  <!-- Numbers first, conclusions second. This panel is the "so what". -->
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-header">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>
+      What this means
+    </div>
+    <div class="panel-body">
+      <div class="highlights" id="highlights">
+        <div class="highlight"><span class="icon">⏳</span><span>Reading your history…</span></div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Yearly Chart ────────────────────────────────────────────── -->
   <div class="chart-card">
@@ -769,6 +915,28 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Streaks & rhythm ───────────────────────────────────────── -->
+  <div class="dash-insights" style="margin-top:16px">
+    <div class="panel">
+      <div class="panel-header">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2s4 4.5 4 8a4 4 0 01-8 0c0-1.5.7-2.8 1.4-3.8C10.5 4.5 12 2 12 2z"/><path d="M12 22a6 6 0 006-6c0-2-1-3.7-2-5 0 2.2-1.3 3-2.2 3-1.6 0-1.4-2.4-1.4-2.4S9 13.4 9 16.5A5.5 5.5 0 0012 22z"/></svg>
+        Streaks
+      </div>
+      <div class="panel-body" id="streakPanel">
+        <div style="color:var(--text-3);font-size:.8rem">Loading…</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Your week
+      </div>
+      <div class="panel-body" id="rhythmPanel">
+        <div style="color:var(--text-3);font-size:.8rem">Loading…</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ── Mobile Bottom Nav ─────────────────────────────────────────── -->
@@ -786,7 +954,7 @@
 <!-- ── Toast container ───────────────────────────────────────────── -->
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/vendor/chart.umd.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
    THEME
@@ -843,6 +1011,7 @@ let habits       = [];
 let completions  = {};
 let stats        = {};
 let yearPayload  = { months: [] };
+let insights     = null;
 let chartYear    = null;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -868,21 +1037,35 @@ function showToast(msg, icon = 'ℹ️') {
 /* ═══════════════════════════════════════════════════════════════
    DATA LOADING
 ═══════════════════════════════════════════════════════════════ */
+async function api(path, opts) {
+  let res;
+  try {
+    res = await fetch(path, opts);
+  } catch {
+    throw new Error('HabitFlow is not responding. Is the app still running?');
+  }
+  if (!res.ok) {
+    let msg = `Something went wrong (${res.status})`;
+    try { const body = await res.json(); if (body && body.error) msg = body.error; } catch {}
+    throw new Error(msg);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
 async function loadHabits() {
-  const res = await fetch('/api/habits');
-  habits = await res.json();
+  habits = await api(`/api/habits?year=${viewYear}&month=${focusMonth}`);
 }
 async function loadCompletions() {
-  const res = await fetch(`/api/completions/${viewYear}/${focusMonth}`);
-  completions = await res.json();
+  completions = await api(`/api/completions/${viewYear}/${focusMonth}`);
 }
 async function loadStats() {
-  const res = await fetch(`/api/stats/${viewYear}/${focusMonth}`);
-  stats = await res.json();
+  stats = await api(`/api/stats/${viewYear}/${focusMonth}`);
+}
+async function loadInsights() {
+  insights = await api(`/api/insights/${viewYear}/${focusMonth}`);
 }
 async function loadYear() {
-  const res = await fetch(`/api/stats/year/${viewYear}`);
-  yearPayload = await res.json();
+  yearPayload = await api(`/api/stats/year/${viewYear}`);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -920,6 +1103,69 @@ function renderAnalysis() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   RENDER HIGHLIGHTS / STREAKS / RHYTHM
+═══════════════════════════════════════════════════════════════ */
+function renderHighlights() {
+  const el = document.getElementById('highlights');
+  const items = (insights && insights.highlights) || [];
+  el.innerHTML = items.map(h => `
+    <div class="highlight ${h.tone || 'info'}">
+      <span class="icon">${h.icon}</span>
+      <span>${escHtml(h.text)}</span>
+    </div>`).join('');
+}
+
+function renderStreaks() {
+  const el = document.getElementById('streakPanel');
+  const rows = (insights && insights.streaks) || [];
+  if (!rows.length) {
+    el.innerHTML = '<div style="color:var(--text-3);font-size:.8rem">Add a habit and streaks will show up here.</div>';
+    return;
+  }
+  el.innerHTML = rows.map(s => {
+    const tone = s.current === 0 ? 'cold' : (s.at_risk ? 'risk' : 'hot');
+    const label = s.current === 0
+      ? 'no streak'
+      : `${s.current} day${s.current === 1 ? '' : 's'}${s.at_risk ? ' ⚠' : ' 🔥'}`;
+    const title = s.at_risk ? 'Not checked off today yet' : '';
+    return `<div class="streak-row">
+      <div class="streak-name">
+        <span>${s.emoji}</span>
+        <span title="${escHtml(s.name)}">${escHtml(s.name)}</span>
+      </div>
+      <div class="streak-current ${tone}" title="${title}">${label}</div>
+      <div class="streak-best">best ${s.best}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRhythm() {
+  const el = document.getElementById('rhythmPanel');
+  const r = insights && insights.rhythm;
+  if (!r || !r.days.some(d => d.possible)) {
+    el.innerHTML = '<div style="color:var(--text-3);font-size:.8rem">Not enough history yet — check in for a couple of weeks.</div>';
+    return;
+  }
+  const bars = r.days.map(d => {
+    const colour = d.pct >= 80 ? 'var(--green)' : d.pct >= 50 ? 'var(--amber)' : 'var(--red)';
+    const height = Math.max(3, Math.round(d.pct * 0.76));
+    return `<div class="rhythm-day" title="${d.weekday}: ${d.done}/${d.possible} check-ins">
+      <div class="rhythm-bar-wrap">
+        <div class="rhythm-bar" style="height:${height}px;background:${colour}"></div>
+      </div>
+      <div class="rhythm-label">${d.short}</div>
+      <div class="rhythm-pct">${Math.round(d.pct)}%</div>
+    </div>`;
+  }).join('');
+
+  const caption = (r.best && r.worst && r.best.weekday !== r.worst.weekday)
+    ? `Strongest on <strong>${r.best.weekday}s</strong>, weakest on <strong>${r.worst.weekday}s</strong>. Based on the last ${r.window_days} days.`
+    : `Based on the last ${r.window_days} days.`;
+
+  el.innerHTML = `<div class="rhythm">${bars}</div><p class="rhythm-caption">${caption}</p>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    RENDER SNAPSHOT
 ═══════════════════════════════════════════════════════════════ */
 function renderSnapshot() {
@@ -927,14 +1173,15 @@ function renderSnapshot() {
   const todayDay  = (viewYear === today.getFullYear() && focusMonth === today.getMonth() + 1) ? today.getDate() : null;
   const todayDs   = todayDay ? stats.day_stats[todayDay - 1] : null;
   const todayDone = todayDs ? todayDs.done : 0;
-  const totalH    = habits.length || 1;
+  const todayOf   = todayDs ? todayDs.total : (habits.length || 0);
 
   const bestDay   = Math.max(...stats.day_stats.map(d => d.done), 0);
   const tracked   = stats.day_stats.filter(d => d.done > 0);
   const avg       = tracked.length ? (tracked.reduce((s, d) => s + d.done, 0) / tracked.length).toFixed(1) : '0';
-  const perfect   = stats.day_stats.filter(d => d.done === totalH && totalH > 0).length;
+  // A perfect day means everything you were tracking *that day* got done.
+  const perfect   = stats.day_stats.filter(d => d.total > 0 && d.done === d.total).length;
 
-  document.getElementById('snapToday').textContent   = `${todayDone}/${totalH}`;
+  document.getElementById('snapToday').textContent   = `${todayDone}/${todayOf}`;
   document.getElementById('snapBest').textContent    = String(bestDay);
   document.getElementById('snapAvg').textContent     = avg;
   document.getElementById('snapPerfect').textContent = String(perfect);
@@ -1027,11 +1274,43 @@ function renderYearChart() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   EXPORT
+   DATA MENU
 ═══════════════════════════════════════════════════════════════ */
-function exportExcel() {
-  showToast('Preparing Excel export…', '⏳');
-  window.location.href = `/api/export/${viewYear}/${focusMonth}`;
+function setupDataMenu() {
+  const btn  = document.getElementById('dataBtn');
+  const menu = document.getElementById('dataMenu');
+
+  const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.onclick = e => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+    if (!menu.hidden) {
+      const r = btn.getBoundingClientRect();
+      menu.style.top   = `${r.bottom + 6}px`;
+      menu.style.right = `${window.innerWidth - r.right}px`;
+    }
+    btn.setAttribute('aria-expanded', String(!menu.hidden));
+  };
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  menu.onclick = async e => {
+    const act = e.target.closest('button')?.dataset.act;
+    if (!act) return;
+    close();
+    if (act === 'export') {
+      showToast('Preparing your Excel workbook…', '⏳');
+      window.location.href = `/api/export/${viewYear}/${focusMonth}`;
+    } else if (act === 'backup') {
+      showToast('Downloading a copy of everything', '💾');
+      window.location.href = '/api/backup';
+    } else if (act === 'where') {
+      try {
+        const info = await api('/api/health');
+        showToast(info.db, '📁');
+      } catch (err) { showToast(err.message, '⚠️'); }
+    }
+  };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1039,15 +1318,30 @@ function exportExcel() {
 ═══════════════════════════════════════════════════════════════ */
 async function loadDetail() {
   updateFocusLabel();
-  await Promise.all([loadHabits(), loadCompletions(), loadStats()]);
+  try {
+    await Promise.all([loadHabits(), loadCompletions(), loadStats(), loadInsights()]);
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    document.getElementById('highlights').innerHTML =
+      `<div class="highlight warn"><span class="icon">⚠️</span><span>${escHtml(err.message)}</span></div>`;
+    return;
+  }
   renderMonthCards();
+  renderHighlights();
   renderAnalysis();
   renderSnapshot();
+  renderStreaks();
+  renderRhythm();
 }
 
 async function loadAll() {
   updateYearLabel();
-  await loadYear();
+  try {
+    await loadYear();
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    return;
+  }
   renderYearChart();
   await loadDetail();
 }
@@ -1066,8 +1360,7 @@ initTheme();
 document.getElementById('prevYear').onclick = () => { viewYear--; loadAll(); };
 document.getElementById('nextYear').onclick = () => { viewYear++; loadAll(); };
 
-document.getElementById('exportBtn').onclick = exportExcel;
-
+setupDataMenu();
 loadAll();
 </script>
 <script>

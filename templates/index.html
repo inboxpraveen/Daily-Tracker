@@ -81,6 +81,7 @@
 
   /* ─── Reset & Base ──────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   html { font-size: 15px; scroll-behavior: smooth; }
   body {
     font-family: var(--font);
@@ -238,12 +239,6 @@
   }
   .btn-dashboard:hover { background: var(--accent-hover); border-color: var(--accent-hover); transform: translateY(-1px); }
 
-  .btn-export {
-    background: var(--green-light);
-    color: var(--green-text);
-    border: 1px solid transparent;
-  }
-  .btn-export:hover { opacity: .88; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.22); }
 
   /* ─── Theme Toggle ──────────────────────────────────────────── */
   .theme-btn {
@@ -259,6 +254,137 @@
     flex-shrink: 0;
   }
   .theme-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* ─── Dropdown menu ─────────────────────────────────────────── */
+  .menu-wrap { position: relative; flex-shrink: 0; }
+  .menu {
+    /* fixed, not absolute: .header-right clips overflow and would hide it */
+    position: fixed;
+    min-width: 232px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    padding: 5px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .menu button {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    transition: background .12s;
+  }
+  .menu button:hover { background: var(--surface2); }
+  .menu hr { border: none; border-top: 1px solid var(--border-light); margin: 4px 2px; }
+
+  /* ─── Today Card ─────────────────────────────────────────────── */
+  .today-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .today-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: space-between;
+  }
+  .today-eyebrow {
+    font-size: .66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-3);
+  }
+  .today-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    line-height: 1.25;
+    margin-top: 2px;
+  }
+  .today-title small { font-size: .8rem; font-weight: 500; color: var(--text-2); }
+  .today-ring { flex-shrink: 0; position: relative; width: 62px; height: 62px; }
+  .today-ring svg { transform: rotate(-90deg); }
+  .today-ring-track { stroke: var(--surface2); }
+  .today-ring-fill  { stroke: var(--green); transition: stroke-dasharray .45s var(--ease); }
+  .today-ring-label {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: .78rem; font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .today-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 14px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px 7px 10px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-2);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: .8rem;
+    font-weight: 600;
+    transition: all .15s var(--ease);
+    line-height: 1.3;
+  }
+  .chip:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .chip:active { transform: scale(.96); }
+  .chip.done { color: #fff; border-color: transparent; }
+  .chip.done .chip-streak { background: rgba(255,255,255,.22); color: #fff; }
+  .chip[disabled] { opacity: .5; cursor: progress; }
+  .chip-streak {
+    font-size: .68rem;
+    font-weight: 700;
+    font-family: var(--mono);
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--surface3);
+    color: var(--text-2);
+  }
+  .chip-check { font-size: .72rem; }
+
+  .today-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 14px;
+    padding: 10px 13px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    font-size: .8rem;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .today-note.good { background: var(--green-light); color: var(--green-text); }
+  .today-note.warn { background: var(--amber-light); color: var(--amber-text); }
+  .today-note .icon { flex-shrink: 0; font-size: .92rem; line-height: 1.4; }
 
   /* ─── Tracker Card ──────────────────────────────────────────── */
   .tracker-card {
@@ -362,6 +488,16 @@
   }
   .habit-emoji { font-size: .92rem; flex-shrink: 0; }
   .habit-name { font-weight: 500; white-space: nowrap; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
+  .habit-retired {
+    font-size: .58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-3);
+    background: var(--surface2);
+    border-radius: 4px;
+    padding: 1px 4px;
+  }
   .habit-actions {
     display: flex;
     gap: 1px;
@@ -553,6 +689,7 @@
   }
   .form-group input:focus { border-color: var(--accent); background: var(--surface); }
   .form-group input::placeholder { color: var(--text-3); }
+  .form-hint { font-size: .7rem; color: var(--text-3); margin-top: 6px; line-height: 1.45; }
 
   .emoji-picker {
     display: grid;
@@ -759,10 +896,19 @@
     <div class="header-right">
       <div class="header-actions-desktop">
         <a class="btn btn-dashboard" href="/dashboard">Dashboard</a>
-        <button type="button" class="btn btn-export" id="exportBtn" title="Export formatted Excel workbook for this month">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Excel
+      </div>
+      <div class="menu-wrap">
+        <button type="button" class="theme-btn" id="dataBtn" title="Export, backup and restore" aria-haspopup="true" aria-expanded="false">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
+        <div class="menu" id="dataMenu" hidden role="menu">
+          <button type="button" data-act="export" role="menuitem">📊 Export this month to Excel</button>
+          <hr>
+          <button type="button" data-act="backup" role="menuitem">💾 Download a backup</button>
+          <button type="button" data-act="restore" role="menuitem">↩️ Restore from a backup…</button>
+          <hr>
+          <button type="button" data-act="where" role="menuitem">📁 Where is my data?</button>
+        </div>
       </div>
       <div class="month-nav">
         <button type="button" id="prevMonth" title="Previous month">
@@ -778,6 +924,31 @@
       </button>
     </div>
   </header>
+
+  <!-- ── Today ───────────────────────────────────────────────────── -->
+  <!-- The one screen that matters daily: what is left, and what it costs
+       you to skip it. The month grid below is for review, not for entry. -->
+  <section class="today-card" id="todayCard" hidden aria-label="Today at a glance">
+    <div class="today-top">
+      <div>
+        <p class="today-eyebrow" id="todayEyebrow">Today</p>
+        <h2 class="today-title">
+          <span id="todayCount">0/0</span>
+          <small id="todaySub">habits done</small>
+        </h2>
+      </div>
+      <div class="today-ring">
+        <svg width="62" height="62" viewBox="0 0 62 62" aria-hidden="true">
+          <circle class="today-ring-track" cx="31" cy="31" r="26" fill="none" stroke-width="7"/>
+          <circle class="today-ring-fill" id="todayRing" cx="31" cy="31" r="26" fill="none"
+                  stroke-width="7" stroke-linecap="round" stroke-dasharray="0 164"/>
+        </svg>
+        <div class="today-ring-label" id="todayPct">0%</div>
+      </div>
+    </div>
+    <div class="today-chips" id="todayChips"></div>
+    <div class="today-note" id="todayNote" hidden></div>
+  </section>
 
   <!-- ── Tracker Card ────────────────────────────────────────────── -->
   <div class="tracker-card">
@@ -851,6 +1022,11 @@
       <label>Color</label>
       <div class="color-picker" id="colorPicker"></div>
     </div>
+    <div class="form-group">
+      <label for="habitStartInput">Tracking since</label>
+      <input type="date" id="habitStartInput">
+      <p class="form-hint">Days before this don't count against you. Move it back to fill in history you already have.</p>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" id="modalCancel">Cancel</button>
       <button class="btn btn-primary" id="modalSave">Save Habit</button>
@@ -858,10 +1034,13 @@
   </div>
 </div>
 
+<!-- Restore picker (hidden; driven by the Data menu) -->
+<input type="file" id="restoreInput" accept="application/json,.json" hidden>
+
 <!-- ── Toast container ───────────────────────────────────────────── -->
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/vendor/chart.umd.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
    THEME
@@ -919,9 +1098,11 @@ let currentMonth = today.getMonth() + 1;
 let habits       = [];
 let completions  = {};
 let stats        = {};
+let insights     = null;
 let editingHabitId = null;
 let chartDailyPct  = null;
 let chartDailyDone = null;
+let busyToday      = new Set();
 
 const EMOJIS = ['🌅','💪','📖','💧','🧘','📵','💰','🎯','🏃','🥗','😴','✍️','🎵','🌿','🔥','⭐','💡','🛡️','🏋️','🧠'];
 const COLORS = ['#22c55e','#6366f1','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#f97316','#10b981','#0ea5e9'];
@@ -937,8 +1118,26 @@ async function init() {
   buildColorPicker();
   setupNav();
   setupModal();
-  setupExport();
+  setupDataMenu();
   await loadAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   API — one place that knows how to fail politely
+═══════════════════════════════════════════════════════════════ */
+async function api(path, opts) {
+  let res;
+  try {
+    res = await fetch(path, opts);
+  } catch {
+    throw new Error('HabitFlow is not responding. Is the app still running?');
+  }
+  if (!res.ok) {
+    let msg = `Something went wrong (${res.status})`;
+    try { const body = await res.json(); if (body && body.error) msg = body.error; } catch {}
+    throw new Error(msg);
+  }
+  return res.status === 204 ? null : res.json();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -946,22 +1145,128 @@ async function init() {
 ═══════════════════════════════════════════════════════════════ */
 async function loadAll() {
   updateMonthLabel();
-  await Promise.all([loadHabits(), loadCompletions(), loadStats()]);
+  try {
+    [habits, completions, stats, insights] = await Promise.all([
+      api(`/api/habits?year=${currentYear}&month=${currentMonth}`),
+      api(`/api/completions/${currentYear}/${currentMonth}`),
+      api(`/api/stats/${currentYear}/${currentMonth}`),
+      api(`/api/insights/${currentYear}/${currentMonth}`),
+    ]);
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    document.getElementById('trackerTable').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔌</div>
+        <p>${escHtml(err.message)}<br><br>Reload this page once it is back.</p>
+      </div>`;
+    return;
+  }
+  renderToday();
   renderTracker();
   renderCharts();
 }
 
-async function loadHabits() {
-  const res = await fetch('/api/habits');
-  habits = await res.json();
+async function refreshDerived() {
+  [stats, insights] = await Promise.all([
+    api(`/api/stats/${currentYear}/${currentMonth}`),
+    api(`/api/insights/${currentYear}/${currentMonth}`),
+  ]);
 }
-async function loadCompletions() {
-  const res = await fetch(`/api/completions/${currentYear}/${currentMonth}`);
-  completions = await res.json();
+
+/* ═══════════════════════════════════════════════════════════════
+   TODAY — the daily driver
+═══════════════════════════════════════════════════════════════ */
+const RING_CIRCUMFERENCE = 2 * Math.PI * 26;
+
+function isViewingThisMonth() {
+  return currentYear === today.getFullYear() && currentMonth === today.getMonth() + 1;
 }
-async function loadStats() {
-  const res = await fetch(`/api/stats/${currentYear}/${currentMonth}`);
-  stats = await res.json();
+
+function renderToday() {
+  const card = document.getElementById('todayCard');
+  // Only meaningful while you are looking at the current month.
+  if (!insights || !isViewingThisMonth() || !insights.today.total) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  const t = insights.today;
+  const streakOf = {};
+  insights.streaks.forEach(s => { streakOf[s.id] = s; });
+
+  document.getElementById('todayEyebrow').textContent =
+    today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  document.getElementById('todayCount').textContent = `${t.done}/${t.total}`;
+  document.getElementById('todaySub').textContent =
+    t.done === t.total ? 'all done — perfect day' : 'habits done today';
+  document.getElementById('todayPct').textContent = Math.round(t.pct) + '%';
+
+  const ring = document.getElementById('todayRing');
+  ring.style.strokeDasharray = `${(t.pct / 100) * RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`;
+  ring.style.stroke = t.pct >= 80 ? 'var(--green)' : t.pct >= 40 ? 'var(--amber)' : 'var(--red)';
+
+  const todayStr = fmtDate(today);
+  document.getElementById('todayChips').innerHTML = habits
+    .filter(h => h.active && (!h.created_at || h.created_at <= todayStr))
+    .map(h => {
+      const done   = !!completions[`${h.id}_${todayStr}`];
+      const streak = streakOf[h.id];
+      const flame  = streak && streak.current >= 2
+        ? `<span class="chip-streak">🔥${streak.current}</span>` : '';
+      const style  = done ? `background:${h.color};border-color:${h.color}` : '';
+      return `<button type="button" class="chip${done ? ' done' : ''}" style="${style}"
+                data-habit="${h.id}" title="${done ? 'Tap to undo' : 'Tap to check off'}">
+        <span>${h.emoji}</span>
+        <span>${escHtml(h.name)}</span>
+        ${flame}
+        <span class="chip-check">${done ? '✓' : '＋'}</span>
+      </button>`;
+    }).join('');
+
+  document.querySelectorAll('#todayChips .chip').forEach(btn => {
+    btn.onclick = () => toggleToday(parseInt(btn.dataset.habit, 10), btn);
+  });
+
+  const note = document.getElementById('todayNote');
+  const top  = (insights.highlights || [])[0];
+  if (top) {
+    note.hidden = false;
+    note.className = `today-note ${top.tone || 'info'}`;
+    note.innerHTML = `<span class="icon">${top.icon}</span><span>${escHtml(top.text)}</span>`;
+  } else {
+    note.hidden = true;
+  }
+}
+
+async function toggleToday(habitId, btn) {
+  if (busyToday.has(habitId)) return;
+  busyToday.add(habitId);
+  btn.disabled = true;
+  const todayStr = fmtDate(today);
+  try {
+    const data = await api('/api/completions/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ habit_id: habitId, date: todayStr }),
+    });
+    const key = `${habitId}_${todayStr}`;
+    if (data.completed) completions[key] = true; else delete completions[key];
+
+    await refreshDerived();
+    const before = insights.streaks.find(s => s.id === habitId);
+    renderToday();
+    renderTracker();
+    renderCharts();
+    if (data.completed && before && before.current > 0 && before.current % 7 === 0) {
+      showToast(`${before.current}-day streak. Keep going!`, '🔥');
+    }
+  } catch (err) {
+    showToast(err.message, '⚠️');
+  } finally {
+    busyToday.delete(habitId);
+    btn.disabled = false;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1014,14 +1319,18 @@ function renderTracker() {
   // Body rows
   let bodyRows = '';
   habits.forEach(h => {
+    const actions = h.active
+      ? `<button title="Edit habit" onclick="openEditModal(${h.id})">✏️</button>
+         <button class="del" title="Stop tracking this habit" onclick="deleteHabit(${h.id})">🗑️</button>`
+      : `<button title="Start tracking this habit again" onclick="restoreHabit(${h.id})">↩️</button>`;
+    const stoppedNote = h.active ? '' :
+      ` <span class="habit-retired" title="Stopped on ${h.deactivated_at}">retired</span>`;
+
     let cells = `<td class="habit-cell">
       <div class="habit-name-row">
         <span class="habit-emoji">${h.emoji}</span>
-        <span class="habit-name" title="${escHtml(h.name)}">${escHtml(h.name)}</span>
-        <div class="habit-actions">
-          <button title="Edit habit" onclick="openEditModal(${h.id})">✏️</button>
-          <button class="del" title="Delete habit" onclick="deleteHabit(${h.id})">🗑️</button>
-        </div>
+        <span class="habit-name" title="${escHtml(h.name)}">${escHtml(h.name)}${stoppedNote}</span>
+        <div class="habit-actions">${actions}</div>
       </div>
     </td>`;
 
@@ -1032,8 +1341,13 @@ function renderTracker() {
         const done    = !!completions[key];
         const isFuture = dateStr > todayStr;
         const isToday  = dateStr === todayStr;
-        const cls      = ['day-cell', done ? 'done' : '', isFuture ? 'future' : '', isToday ? 'today-col' : '', (di === 0 && wi > 0) ? 'week-sep' : ''].filter(Boolean).join(' ');
-        cells += `<td class="${cls}" onclick="toggleCompletion(${h.id},'${dateStr}',this)" data-habit="${h.id}" data-date="${dateStr}">
+        // Outside the window this habit was actually tracked in — not a miss.
+        const untracked = (h.created_at && dateStr < h.created_at) ||
+                          (h.deactivated_at && dateStr > h.deactivated_at);
+        const cls      = ['day-cell', done ? 'done' : '', (isFuture || untracked) ? 'future' : '', isToday ? 'today-col' : '', (di === 0 && wi > 0) ? 'week-sep' : ''].filter(Boolean).join(' ');
+        const click    = (isFuture || untracked) ? '' :
+          ` onclick="toggleCompletion(${h.id},'${dateStr}',this)"`;
+        cells += `<td class="${cls}"${click} data-habit="${h.id}" data-date="${dateStr}">
           <div class="check-inner" style="${done ? `background:${h.color}` : ''}">
             ${done ? '✓' : ''}
           </div>
@@ -1170,12 +1484,11 @@ async function toggleCompletion(habitId, dateStr, cell) {
   cell.classList.add('loading');
   cell.style.pointerEvents = 'none';
   try {
-    const res  = await fetch('/api/completions/toggle', {
+    const data   = await api('/api/completions/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ habit_id: habitId, date: dateStr }),
     });
-    const data   = await res.json();
     const habit  = habits.find(h => h.id === habitId);
     const inner  = cell.querySelector('.check-inner');
     if (data.completed) {
@@ -1189,9 +1502,12 @@ async function toggleCompletion(habitId, dateStr, cell) {
       inner.style.background = '';
       inner.textContent = '';
     }
-    await loadStats();
+    await refreshDerived();
     renderCharts();
     renderTrackerFooter();
+    renderToday();
+  } catch (err) {
+    showToast(err.message, '⚠️');
   } finally {
     cell.classList.remove('loading');
     cell.style.pointerEvents = '';
@@ -1270,6 +1586,8 @@ function openAddModal() {
   editingHabitId = null;
   document.getElementById('modalTitle').textContent = 'Add New Habit';
   document.getElementById('habitNameInput').value   = '';
+  document.getElementById('habitStartInput').value  = fmtDate(today);
+  document.getElementById('habitStartInput').max    = fmtDate(today);
   selectedEmoji = EMOJIS[0];
   selectedColor = COLORS[0];
   updateEmojiSelection();
@@ -1284,6 +1602,8 @@ function openEditModal(id) {
   editingHabitId = id;
   document.getElementById('modalTitle').textContent = 'Edit Habit';
   document.getElementById('habitNameInput').value   = h.name;
+  document.getElementById('habitStartInput').value  = h.created_at || fmtDate(today);
+  document.getElementById('habitStartInput').max    = fmtDate(today);
   selectedEmoji = h.emoji;
   selectedColor = h.color;
   updateEmojiSelection();
@@ -1300,29 +1620,52 @@ function closeModal() {
 async function saveHabit() {
   const name = document.getElementById('habitNameInput').value.trim();
   if (!name) { showToast('Please enter a habit name', '⚠️'); return; }
-  const payload = { name, emoji: selectedEmoji, color: selectedColor };
-  let res;
-  if (editingHabitId) {
-    res = await fetch(`/api/habits/${editingHabitId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    });
-  } else {
-    res = await fetch('/api/habits', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    });
+  const payload = {
+    name,
+    emoji: selectedEmoji,
+    color: selectedColor,
+    created_at: document.getElementById('habitStartInput').value || fmtDate(today),
+  };
+  try {
+    if (editingHabitId) {
+      await api(`/api/habits/${editingHabitId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+    } else {
+      await api('/api/habits', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+    }
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    return;
   }
-  if (res.ok) {
-    closeModal();
-    showToast(editingHabitId ? 'Habit updated!' : 'Habit added! 🎉', '✅');
-    await loadAll();
-  }
+  closeModal();
+  showToast(editingHabitId ? 'Habit updated!' : 'Habit added! 🎉', '✅');
+  await loadAll();
 }
 
 async function deleteHabit(id) {
   const h = habits.find(x => x.id === id);
-  if (!confirm(`Remove "${h?.name}" from tracking? Your history will be preserved.`)) return;
-  await fetch(`/api/habits/${id}`, { method: 'DELETE' });
-  showToast('Habit removed', '🗑️');
+  if (!confirm(`Stop tracking "${h?.name}"?\n\nYour history stays intact and past months keep their scores. You can bring it back any time.`)) return;
+  try {
+    await api(`/api/habits/${id}`, { method: 'DELETE' });
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    return;
+  }
+  showToast('Stopped tracking that habit', '🗑️');
+  await loadAll();
+}
+
+async function restoreHabit(id) {
+  try {
+    await api(`/api/habits/${id}/restore`, { method: 'POST' });
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    return;
+  }
+  showToast('Tracking resumed', '↩️');
   await loadAll();
 }
 
@@ -1356,12 +1699,62 @@ function hexToRgb(hex) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   EXPORT
+   DATA MENU — export, backup, restore
 ═══════════════════════════════════════════════════════════════ */
-function setupExport() {
-  document.getElementById('exportBtn').onclick = () => {
-    showToast('Preparing Excel export…', '⏳');
-    window.location.href = `/api/export/${currentYear}/${currentMonth}`;
+function setupDataMenu() {
+  const btn   = document.getElementById('dataBtn');
+  const menu  = document.getElementById('dataMenu');
+  const input = document.getElementById('restoreInput');
+
+  const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.onclick = e => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+    if (!menu.hidden) {
+      const r = btn.getBoundingClientRect();
+      menu.style.top   = `${r.bottom + 6}px`;
+      menu.style.right = `${window.innerWidth - r.right}px`;
+    }
+    btn.setAttribute('aria-expanded', String(!menu.hidden));
+  };
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  menu.onclick = async e => {
+    const act = e.target.closest('button')?.dataset.act;
+    if (!act) return;
+    close();
+    if (act === 'export') {
+      showToast('Preparing your Excel workbook…', '⏳');
+      window.location.href = `/api/export/${currentYear}/${currentMonth}`;
+    } else if (act === 'backup') {
+      showToast('Downloading a copy of everything', '💾');
+      window.location.href = '/api/backup';
+    } else if (act === 'restore') {
+      input.click();
+    } else if (act === 'where') {
+      try {
+        const info = await api('/api/health');
+        showToast(info.db, '📁');
+      } catch (err) { showToast(err.message, '⚠️'); }
+    }
+  };
+
+  input.onchange = async () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    if (!confirm('Restoring replaces every habit and tick you have now with the contents of this file.\n\nContinue?')) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const out = await api('/api/restore', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed),
+      });
+      showToast(`Restored ${out.habits} habits and ${out.completions} check-ins`, '✅');
+      await loadAll();
+    } catch (err) {
+      showToast(err instanceof SyntaxError ? 'That file is not valid JSON' : err.message, '⚠️');
+    }
   };
 }
 

@@ -1,121 +1,185 @@
 # HabitFlow
 
-A small, self-hosted habit tracker. You run it on your computer, your data stays in a local SQLite file next to the app. The interface is a simple web app backed by a minimal Flask API.
+A habit tracker that runs on your own computer. Tick off what you did today, and it tells you what that adds up to — streaks, the day of the week you keep slipping on, the one habit dragging your month down.
 
-## Why this exists
+No account. No subscription. No cloud. Your history lives in a single file on your machine.
 
-The idea is to **help people stay motivated** with a clear, low-friction way to log habits and see progress. A similar kind of app showed up on Instagram, but the creator was **asking for payment**. This repository is an **open-source alternative** inspired by that: same general goal—track daily habits and feel good about consistency—but **free to run, inspect, and change**. The goal stays simple: **your habits, your machine, no paywall.**
+---
 
-## Screenshots
+## Install (Windows)
 
-### Application UI
+1. Go to [**Releases**](../../releases) and download **`HabitFlow-Setup-x.y.z.exe`**.
+2. Double-click it. No admin rights needed — it installs just for you.
+3. HabitFlow opens in your browser. Start ticking boxes.
 
-![HabitFlow - Tracker](assets/Daily-Tracker-Page.png)
+After that, launch it from the Start Menu like any other app. Closing the browser tab shuts the app down on its own.
 
-![HabitFlow - Dashboard](assets/Dashboard.png)
+> **"Windows protected your PC"** — the installer is not code-signed (certificates cost money this project does not take). Click **More info → Run anyway**. Every release is built in the open on GitHub Actions; you can read the build log in the [Actions tab](../../actions) and reproduce it yourself from source.
 
-![HabitFlow - Adding New Habit](assets/Adding-New-Habit.png)
+Prefer no installer? The same release has a **portable `.zip`** — unpack it anywhere (a USB stick works) and run `HabitFlow.exe` from the folder.
 
-![HabitFlow - Tracker](assets/Daily-Tracker-Page-Light.png)
+**Not on Windows?** Run it from source — see [Running from source](#running-from-source). It works on macOS and Linux; only the packaged installer is Windows-only for now.
 
-### Excel Export Screenshots
-
-![HabitFlow Excel - Sheet 1](assets/Excel-Export-1.png)
-
-![HabitFlow Excel - Sheet 2](assets/Excel-Export-2.png)
-
-![HabitFlow Excel - Sheet 3](assets/Excel-Export-3.png)
-
-
-## Project layout
-
-```text
-Daily-Tracker/
-├── app.py                 # Web server, database setup, JSON API
-├── habits.db              # Your data (SQLite); created on first run, not in git
-├── requirements.txt       # Python dependencies (Flask)
-├── LICENSE                  # Apache License 2.0
-├── README.md
-├── assets/                  # Screenshots and other static images for docs
-│   └── screenshot.png       # Add your screenshot here (see “Screenshot” above)
-└── templates/
-    ├── index.html           # Tracker page: monthly grid, daily checkboxes, quick charts
-    └── dashboard.html       # Dashboard: summaries, trends, exports for a chosen month
-```
-
-## How it works (high level)
-
-- **Flask** (`app.py`) serves two pages: the **Tracker** at `/` and the **Dashboard** at `/dashboard`. Everything else is **JSON under `/api/...`** that the browser calls with JavaScript (no separate frontend build step).
-- **SQLite** stores two kinds of things: **habits** (name, emoji, color, active flag) and **completions** (which habit was done on which date). The first time you run the app, if the database is empty, a few **example habits** are inserted so you can try the UI right away; you can edit or remove them on the Tracker page.
-- **Tracker** is for **fast daily use**: pick a month, tick boxes per habit per day, and see small charts update as you log completions.
-- **Dashboard** is for **the bigger picture**: KPIs, monthly progress, per-habit breakdowns, a yearly view, and **CSV exports** for the month you have selected (same export ideas exist on the Tracker for the current month view).
-- **Exports** help you use the data elsewhere: one style is **one row per day**, another is a **month summary plus a habit-by-date grid**.
+---
 
 ## What you get
 
-- **Tracker** (`/`): monthly grid, checkboxes per habit and day, quick charts under the grid that update when you log completions.
-- **Dashboard** (`/dashboard`): KPIs, monthly progress, per-habit analysis, snapshot stats, a yearly overview chart, and month cards. Use this when you want the big picture, not while doing fast daily entry.
-- **Exports**: CSV export for the current month on the Tracker (`Export daily` is one row per day; `Export month` is a summary line plus a habit-by-date grid). The same exports exist on the Dashboard for whichever month you have selected.
+### Today
+The screen you actually use daily. Every habit as a tappable chip with its current streak, a ring showing how much of today is done, and one line telling you what matters right now — *"Streaks on the line today: Exercise. One tick each keeps them alive."*
 
-## Download (no Python required)
+![HabitFlow – Today and the monthly grid](assets/Daily-Tracker-Page.png)
 
-Go to the [Releases](../../releases) page, download `HabitFlow.exe`, and double-click it. The app opens in your default browser automatically. Your data is stored in `%APPDATA%\HabitFlow\habits.db` and survives updates.
+### The monthly grid
+Every habit × every day, right under Today. Click any cell to fill in a day you forgot. Days before you started a habit are greyed out, so a habit you added yesterday doesn't make last week look like a failure.
 
-The app tries ports `8050 → 11050 → 12050 → 13050` in order and picks the first free one. If all are taken, edit the `PORTS` list near the bottom of `app.py` and rebuild.
+![HabitFlow – Light theme](assets/Daily-Tracker-Page-Light.png)
 
-### Windows Defender false positive
+### Insights, not just charts
+The dashboard leads with **What this means** — plain sentences derived from your own data:
 
-Windows Defender may flag `HabitFlow.exe` as `Wacatac.B!ml`. **This is a false positive.** PyInstaller bundles Python into a self-extracting exe, and Defender's ML model mistakes that pattern for malware — it affects almost every PyInstaller app. The build is done transparently on GitHub Actions (check the [Actions tab](../../actions)); anyone can inspect the source and reproduce it.
+- 🔥 *14-day streak on 5:30 AM Wake Up — your longest run yet. Don't break it today.*
+- 📅 *Sundays are your weak spot (28%) versus Fridays (69%). Plan a lighter Sunday routine.*
+- 📈 *September is running 9 points ahead of August (60% vs 51%).*
+- 🎯 *Budget Tracking is the one dragging the month down (0/6). Make it smaller rather than dropping it.*
 
-To allow it: when Defender blocks the file, click **Actions → Allow on device**. Or go to **Windows Security → Virus & threat protection → Protection history**, find the quarantined item, and restore it.
+![HabitFlow – Dashboard insights](assets/Dashboard.png)
 
-## Run from source (Python)
+Below that: current and best streak per habit, and a weekday rhythm chart over the last 90 days.
+
+![HabitFlow – Streaks and weekly rhythm](assets/Dashboard-Streaks.png)
+
+### Excel export
+A formatted, multi-sheet workbook for any month — overview with charts, the full habit grid, and a per-habit analysis sheet. Good for sharing, printing, or doing your own analysis.
+
+![HabitFlow Excel – Overview](assets/Excel-Export-1.png)
+![HabitFlow Excel – Grid](assets/Excel-Export-2.png)
+![HabitFlow Excel – Analysis](assets/Excel-Export-3.png)
+
+### Backup and restore
+The **⤓** menu in the header downloads everything as one JSON file, and restores from one. Use it to move to a new computer, or before you experiment.
+
+![HabitFlow – Backup and restore menu](assets/Data-Menu.png)
+
+### Habits on your terms
+Name, emoji, colour — and a **Tracking since** date, so you decide which days a habit is judged on.
+
+![HabitFlow – Adding a habit](assets/Adding-New-Habit.png)
+
+---
+
+## Your data
+
+Everything lives in one SQLite file (plus small `-wal`/`-shm` sidecars SQLite keeps beside it):
+
+```
+%APPDATA%\HabitFlow\habits.db
+```
+
+To open that folder: press `Win + R`, paste `%APPDATA%\HabitFlow`, press Enter. (The **⤓** menu in the app has a **Where is my data?** entry that shows the exact path too.)
+
+- **Nothing leaves your machine.** The app only listens on `127.0.0.1` and refuses requests that arrive under any other hostname.
+- **Updating keeps your history.** Installing a new version over the old one leaves the database alone.
+- **Uninstalling asks first** before deleting your history.
+- **Starting fresh:** delete `habits.db` and relaunch. You get a clean database with the example habits back.
+- **Something went wrong?** Errors are written to `%APPDATA%\HabitFlow\habitflow.log`.
+
+---
+
+## How percentages are calculated
+
+Worth knowing, because most trackers get this wrong and quietly demoralise you:
+
+- A habit only counts on days it was actually being tracked — from the day you created it to the day you stopped. **Adding a habit today does not retroactively ruin last month**, and removing one does not rewrite your history.
+- You can move a habit's start date back (**Edit habit → Tracking since**) if you want to fill in history you already have on paper.
+- A *perfect day* means everything you were tracking **that day** got done.
+- The current month is scored against days that have actually happened, not the whole month.
+- A streak survives today being unfinished — the day isn't over. It shows as ⚠ *at risk* instead.
+
+---
+
+## Running from source
 
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-The terminal prints the URL. Data is stored in `%APPDATA%\HabitFlow\habits.db`.
+The terminal prints the URL. Requires Python 3.9+.
 
-## Build the exe locally
+Useful environment variables:
+
+| Variable | Effect |
+| --- | --- |
+| `HABITFLOW_DATA_DIR` | Store the database somewhere else (handy for testing) |
+| `HABITFLOW_NO_BROWSER=1` | Don't open a browser on start |
+
+The app tries ports `8050 → 11050 → 12050 → 13050` and takes the first free one. If HabitFlow is already running on one of them, launching again just opens that window instead of starting a second copy.
+
+### Tests
 
 ```bash
-pip install pyinstaller
-pyinstaller habitflow.spec
-# output: dist/HabitFlow.exe
+pip install -r requirements-dev.txt
+python -m pytest tests -q
 ```
 
-Double-click `dist/HabitFlow.exe` to test. Close it with Ctrl+C in the terminal or just close the browser — the process will stay running in the background until you kill it from Task Manager or reboot.
+Tests run against a temporary database, so your real history is never touched.
 
-## Publish a new release
+### Building the installer yourself
 
 ```bash
-git add .
-git commit -m "your message"
-git push
-
-git tag v1.0.0          # bump this for every release, e.g. v1.0.1, v1.1.0
-git push origin v1.0.0
+pip install -r requirements-dev.txt
+python packaging/make_icon.py         # assets/habitflow.ico
+python packaging/make_version.py      # exe version resource
+pyinstaller --noconfirm packaging/habitflow.spec
+iscc /DAppVersion=1.1.0 packaging\habitflow.iss
+# -> dist/HabitFlow-Setup-1.1.0.exe
 ```
 
-GitHub Actions builds the exe on its own Windows machine and attaches `HabitFlow.exe` to a new Release automatically (~3–4 minutes). Check the **Actions** tab if something looks wrong.
+[Inno Setup 6](https://jrsoftware.org/isdl.php) is needed for the last step (`winget install JRSoftware.InnoSetup`).
 
-## Start fresh (wipe all data)
+### Cutting a release
 
-Your data lives in one file. Delete it and relaunch — the app creates a new empty database with the default habits on next start.
-
-**Location:**
-```
-%APPDATA%\HabitFlow\habits.db
+```bash
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-To open that folder directly: press `Win + R`, paste `%APPDATA%\HabitFlow`, hit Enter, then delete `habits.db`.
+GitHub Actions runs the tests, builds the app, smoke-tests the built exe, compiles the installer and attaches both the setup exe and the portable zip to a new Release.
+
+---
+
+## Project layout
+
+```text
+Daily-Tracker/
+├── app.py                     # Server, database, JSON API, insights
+├── requirements.txt           # Runtime dependencies
+├── requirements-dev.txt       # + tests and build tooling
+├── templates/
+│   ├── index.html             # Today + the monthly grid
+│   └── dashboard.html         # Insights, streaks, trends
+├── static/
+│   ├── favicon.svg
+│   └── vendor/chart.umd.min.js   # bundled, so charts work offline
+├── packaging/
+│   ├── habitflow.spec         # PyInstaller (one-folder)
+│   ├── habitflow.iss          # Inno Setup installer
+│   ├── make_icon.py           # generates assets/habitflow.ico
+│   └── make_version.py        # generates the exe version resource
+├── tests/test_app.py
+└── assets/                    # habitflow.ico + screenshots
+```
+
+---
+
+## Why this exists
+
+The idea is to help people stay consistent without paying a subscription to look at their own data. A similar app was doing the rounds on Instagram behind a paywall; this is a free, open alternative with the same goal — track daily habits, feel good about consistency — that you can read, run and change yourself.
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep changes focused; match the existing style in `app.py` and the templates. If you add a feature, a short note in this README helps new users.
+Issues and pull requests welcome. Keep changes focused, match the existing style in `app.py` and the templates, and run `python -m pytest tests -q` before opening a PR.
 
 ## License
 
-This project is licensed under the **Apache License 2.0**; see the [`LICENSE`](LICENSE) file for the full text.
+Apache License 2.0 — see [`LICENSE`](LICENSE).
