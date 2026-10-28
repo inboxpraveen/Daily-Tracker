@@ -149,7 +149,7 @@ jobs:
             Your habits stay in `%APPDATA%\HabitFlow\habits.db` on your own machine.
             Nothing is uploaded anywhere. Updating over the top keeps your history.
 
-            > **SmartScreen note:** this installer is not code-signed (certificates
-            > cost money this project does not take). Windows may show
+            > **SmartScreen note:** this installer is not code-signed (a certificate
+            > costs money and this project has none to spend on one yet). Windows may show
             > "Windows protected your PC". Click **More info, then Run anyway**.
             > The build is fully reproducible from source in the Actions tab.
