@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please do not open a public issue for a security problem. Use GitHub's private reporting: open the repository's **Security** tab and choose **Report a vulnerability**. You can also email the maintainer at inboxpraveen.17@gmail.com.
+Please do not open a public issue for a security problem. Use GitHub's private reporting: open the repository's **Security** tab and choose **Report a vulnerability**. You can also email the maintainer; the address is on the GitHub profile of the repository owner.
 
 Include a description, steps to reproduce and the affected version. You will get an acknowledgement within a few days. Fixes go out as a new release and are credited in the changelog unless you would rather not be named.
 

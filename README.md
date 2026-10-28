@@ -4,7 +4,7 @@
 
 # HabitFlow
 
-[![Latest release](https://img.shields.io/github/v/release/inboxpraveen/Daily-Tracker?sort=semver&color=6366f1)](https://github.com/inboxpraveen/Daily-Tracker/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/inboxpraveen/Daily-Tracker?color=6366f1)](https://github.com/inboxpraveen/Daily-Tracker/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/inboxpraveen/Daily-Tracker/total?color=6366f1)](https://github.com/inboxpraveen/Daily-Tracker/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](requirements.txt)
