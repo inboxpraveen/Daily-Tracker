@@ -186,8 +186,8 @@ pip install -r requirements-dev.txt
 python packaging/make_icon.py         # assets/habitflow.ico
 python packaging/make_version.py      # exe version resource
 pyinstaller --noconfirm packaging/habitflow.spec
-iscc /DAppVersion=1.1.0 packaging\habitflow.iss
-# produces dist/HabitFlow-Setup-1.1.0.exe
+iscc /DAppVersion=1.1.1 packaging\habitflow.iss
+# produces dist/HabitFlow-Setup-1.1.1.exe
 ```
 
 [Inno Setup 6](https://jrsoftware.org/isdl.php) is needed for the last step (`winget install JRSoftware.InnoSetup`).
@@ -195,8 +195,8 @@ iscc /DAppVersion=1.1.0 packaging\habitflow.iss
 ### Cutting a release
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 GitHub Actions runs the tests, builds the app, smoke-tests the built exe, compiles the installer and attaches both the setup exe and the portable zip to a new Release.

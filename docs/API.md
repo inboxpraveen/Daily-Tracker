@@ -14,7 +14,7 @@ Requests addressed to any host other than `127.0.0.1`, `localhost` or `::1` get 
 
 | Method and path | Result |
 | --- | --- |
-| `GET /api/health` | `{"app": "HabitFlow", "version": "1.1.0", "db": "<path to habits.db>"}` |
+| `GET /api/health` | `{"app": "HabitFlow", "version": "1.1.1", "db": "<path to habits.db>"}` |
 | `POST /api/heartbeat` | `204`. The pages call this every 10 seconds so the packaged app knows a tab is open |
 
 ## Habits

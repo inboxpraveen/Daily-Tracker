@@ -4,6 +4,8 @@ Notable changes to HabitFlow are listed here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-28
+
 ### Changed
 - The fonts (DM Sans and DM Mono, latin subset) are bundled in `static/vendor/fonts/` instead of loaded from Google Fonts. Opening a page no longer makes any request to another host, which is what the README's privacy claim says. A new test checks both pages for external resources.
 - Running from source (`python app.py`) no longer starts Flask's debugger and auto-reloader. Set `HABITFLOW_DEBUG=1` to get them back for development.

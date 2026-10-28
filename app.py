@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 import calendar
 
 APP_NAME = 'HabitFlow'
-APP_VERSION = '1.1.0'
+APP_VERSION = '1.1.1'
 
 
 def _resource(rel):

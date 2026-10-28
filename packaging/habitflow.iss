@@ -7,13 +7,13 @@
 ; uninstaller in Apps & features.
 ;
 ; Build (after `pyinstaller packaging/habitflow.spec`):
-;   iscc /DAppVersion=1.1.0 packaging\habitflow.iss
+;   iscc /DAppVersion=1.1.1 packaging\habitflow.iss
 ;
 ; Your habit data lives in %APPDATA%\HabitFlow and is deliberately NOT removed
 ; on uninstall; the uninstaller asks first.
 
 #ifndef AppVersion
-  #define AppVersion "1.1.0"
+  #define AppVersion "1.1.1"
 #endif
 
 #define AppName        "HabitFlow"
