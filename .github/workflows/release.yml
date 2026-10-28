@@ -140,7 +140,7 @@ jobs:
             ## Install
 
             1. Download **HabitFlow-Setup-${{ steps.ver.outputs.version }}.exe** below.
-            2. Double-click it. No admin rights needed — it installs just for you.
+            2. Double-click it. No admin rights needed, it installs just for you.
             3. HabitFlow opens in your browser. That's it.
 
             Prefer no installer? Grab the portable `.zip`, unpack it anywhere and
@@ -151,5 +151,5 @@ jobs:
 
             > **SmartScreen note:** this installer is not code-signed (certificates
             > cost money this project does not take). Windows may show
-            > "Windows protected your PC" — click **More info → Run anyway**.
+            > "Windows protected your PC". Click **More info, then Run anyway**.
             > The build is fully reproducible from source in the Actions tab.

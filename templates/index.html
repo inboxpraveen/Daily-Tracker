@@ -6,11 +6,10 @@
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>HabitFlow – Daily Tracker</title>
+<title>HabitFlow - Daily Tracker</title>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="shortcut icon" href="/static/favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/fonts/fonts.css">
 <style>
   /* ─── Design Tokens ─────────────────────────────────────────── */
   :root {
@@ -1123,7 +1122,7 @@ async function init() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   API — one place that knows how to fail politely
+   API: one place that knows how to fail politely
 ═══════════════════════════════════════════════════════════════ */
 async function api(path, opts) {
   let res;
@@ -1174,7 +1173,7 @@ async function refreshDerived() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   TODAY — the daily driver
+   TODAY: the daily driver
 ═══════════════════════════════════════════════════════════════ */
 const RING_CIRCUMFERENCE = 2 * Math.PI * 26;
 
@@ -1199,7 +1198,7 @@ function renderToday() {
     today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   document.getElementById('todayCount').textContent = `${t.done}/${t.total}`;
   document.getElementById('todaySub').textContent =
-    t.done === t.total ? 'all done — perfect day' : 'habits done today';
+    t.done === t.total ? 'all done, a perfect day' : 'habits done today';
   document.getElementById('todayPct').textContent = Math.round(t.pct) + '%';
 
   const ring = document.getElementById('todayRing');
@@ -1341,7 +1340,7 @@ function renderTracker() {
         const done    = !!completions[key];
         const isFuture = dateStr > todayStr;
         const isToday  = dateStr === todayStr;
-        // Outside the window this habit was actually tracked in — not a miss.
+        // Outside the window this habit was actually tracked in, so not a miss.
         const untracked = (h.created_at && dateStr < h.created_at) ||
                           (h.deactivated_at && dateStr > h.deactivated_at);
         const cls      = ['day-cell', done ? 'done' : '', (isFuture || untracked) ? 'future' : '', isToday ? 'today-col' : '', (di === 0 && wi > 0) ? 'week-sep' : ''].filter(Boolean).join(' ');
@@ -1699,7 +1698,7 @@ function hexToRgb(hex) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DATA MENU — export, backup, restore
+   DATA MENU: export, backup, restore
 ═══════════════════════════════════════════════════════════════ */
 function setupDataMenu() {
   const btn   = document.getElementById('dataBtn');
@@ -1784,7 +1783,7 @@ function fmtDateParts(y, m, d) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BOOT  — all let declarations are above; safe to init theme now
+   BOOT: all let declarations are above; safe to init theme now
 ═══════════════════════════════════════════════════════════════ */
 document.getElementById('themeToggle').addEventListener('click', () => {
   applyTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');

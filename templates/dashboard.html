@@ -6,11 +6,10 @@
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>HabitFlow – Dashboard</title>
+<title>HabitFlow - Dashboard</title>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="shortcut icon" href="/static/favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/fonts/fonts.css">
 <style>
   /* ─── Design Tokens ─────────────────────────────────────────── */
   :root {
@@ -829,7 +828,7 @@
 
   <!-- ── Month Cards ────────────────────────────────────────────── -->
   <div class="month-cards-section">
-    <p class="section-label">Month overview — click to focus</p>
+    <p class="section-label">Month overview: click to focus</p>
     <div class="month-cards" id="monthCards"></div>
   </div>
 
@@ -838,7 +837,7 @@
     <div class="focus-icon">📅</div>
     <div>
       <div class="focus-label">Focused month</div>
-      <div class="focus-month" id="focusLabel">—</div>
+      <div class="focus-month" id="focusLabel">-</div>
     </div>
   </div>
 
@@ -846,22 +845,22 @@
   <div class="stats-strip">
     <div class="stat-card green">
       <div class="stat-label">Completed</div>
-      <div class="stat-value" id="statDone">—</div>
+      <div class="stat-value" id="statDone">-</div>
       <div class="stat-sub">check-ins this month</div>
     </div>
     <div class="stat-card amber">
       <div class="stat-label">Habits</div>
-      <div class="stat-value" id="statHabits">—</div>
+      <div class="stat-value" id="statHabits">-</div>
       <div class="stat-sub">active habits</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Days tracked</div>
-      <div class="stat-value" id="statDays">—</div>
+      <div class="stat-value" id="statDays">-</div>
       <div class="stat-sub">days in range</div>
     </div>
     <div class="stat-card red">
       <div class="stat-label">Missed</div>
-      <div class="stat-value" id="statMissed">—</div>
+      <div class="stat-value" id="statMissed">-</div>
       <div class="stat-sub">possible check-ins</div>
     </div>
   </div>
@@ -897,19 +896,19 @@
         <div class="streak-grid" id="snapshotGrid">
           <div class="streak-item">
             <div class="streak-item-label">Today done</div>
-            <div class="streak-item-val" id="snapToday">—</div>
+            <div class="streak-item-val" id="snapToday">-</div>
           </div>
           <div class="streak-item">
             <div class="streak-item-label">Best day</div>
-            <div class="streak-item-val" id="snapBest">—</div>
+            <div class="streak-item-val" id="snapBest">-</div>
           </div>
           <div class="streak-item">
             <div class="streak-item-label">Avg / day</div>
-            <div class="streak-item-val" id="snapAvg">—</div>
+            <div class="streak-item-val" id="snapAvg">-</div>
           </div>
           <div class="streak-item">
             <div class="streak-item-label">Perfect days</div>
-            <div class="streak-item-val" id="snapPerfect">—</div>
+            <div class="streak-item-val" id="snapPerfect">-</div>
           </div>
         </div>
       </div>
@@ -1143,7 +1142,7 @@ function renderRhythm() {
   const el = document.getElementById('rhythmPanel');
   const r = insights && insights.rhythm;
   if (!r || !r.days.some(d => d.possible)) {
-    el.innerHTML = '<div style="color:var(--text-3);font-size:.8rem">Not enough history yet — check in for a couple of weeks.</div>';
+    el.innerHTML = '<div style="color:var(--text-3);font-size:.8rem">Not enough history yet. Check in for a couple of weeks.</div>';
     return;
   }
   const bars = r.days.map(d => {
@@ -1347,7 +1346,7 @@ async function loadAll() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SETUP  — all let declarations are above; safe to init theme now
+   SETUP: all let declarations are above; safe to init theme now
 ═══════════════════════════════════════════════════════════════ */
 document.getElementById('themeToggle').addEventListener('click', () => {
   applyTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');

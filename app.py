@@ -41,7 +41,7 @@ LOG_PATH = os.path.join(_data_dir(), 'habitflow.log')
 
 # ── Auto-shutdown when browser tab is closed (exe mode only) ─────────────────
 _last_seen = time.time()
-_IDLE_TIMEOUT = 120  # seconds — browser sends a heartbeat every 10s
+_IDLE_TIMEOUT = 120  # seconds; the browser sends a heartbeat every 10s
 
 
 @app.before_request
@@ -80,7 +80,7 @@ def _reject_foreign_host():
 def _json_errors(err):
     """Never hand the browser an HTML error page for an /api call.
 
-    Pages keep Flask's normal behaviour — a stray /favicon.ico should be an
+    Pages keep Flask's normal behaviour: a stray /favicon.ico should be an
     ordinary 404, not a logged traceback.
     """
     if not request.path.startswith('/api/'):
@@ -519,7 +519,7 @@ def get_stats(year, month):
     return jsonify(detail)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# INSIGHTS — turn the raw ticks into things worth acting on
+# INSIGHTS: turn the raw ticks into things worth acting on
 # ═══════════════════════════════════════════════════════════════════════════
 
 WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
@@ -533,7 +533,7 @@ STREAK_WINDOW_DAYS = 90   # how far back the weekday/rhythm analysis looks
 def _streaks(habit, done_dates, today):
     """Current and best run of consecutive days for one habit.
 
-    The current streak survives a missing tick for *today* — the day is not
+    The current streak survives a missing tick for *today*, because the day is not
     over yet. It is reported as `at_risk` instead, which is what actually
     nudges someone to open the app and finish the day.
     """
@@ -657,7 +657,7 @@ def get_insights(year, month):
         if leader['current'] >= leader['best']:
             highlights.append({
                 'icon': '🔥', 'tone': 'good',
-                'text': f"{leader['current']}-day streak on {leader['name']} — "
+                'text': f"{leader['current']}-day streak on {leader['name']}, "
                         f"your longest run yet. Don't break it today.",
             })
         else:
@@ -680,7 +680,7 @@ def get_insights(year, month):
     elif today_block['total'] and today_block['done'] == today_block['total']:
         highlights.append({
             'icon': '🏅', 'tone': 'good',
-            'text': f"Every habit is checked off today. That is a perfect day — "
+            'text': f"Every habit is checked off today. That is a perfect day, "
                     f"number {perfect_days} this month.",
         })
     elif today_block['remaining']:
@@ -756,7 +756,7 @@ def get_insights(year, month):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# BACKUP / RESTORE — your data should never be trapped in one .db file
+# BACKUP / RESTORE: your data should never be trapped in one .db file
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/api/backup')
@@ -958,7 +958,7 @@ def export_excel(year, month):
         return f_pg if v >= 80 else (f_pm if v >= 50 else f_pb)
 
     # ═══════════════════════════════════════════════════════════════
-    # SHEET 1 — Overview
+    # SHEET 1: Overview
     # ═══════════════════════════════════════════════════════════════
     ws1 = wb.add_worksheet('Overview')
     ws1.set_zoom(100)
@@ -993,7 +993,7 @@ def export_excel(year, month):
 
     # ── daily data table (provides chart data source) ─────────────
     ws1.set_row(6, 18)
-    ws1.merge_range('A7:E7', f'Daily Breakdown  —  {month_name} {year}', f_section)
+    ws1.merge_range('A7:E7', f'Daily Breakdown: {month_name} {year}', f_section)
     for ci, hdr in enumerate(['Day', 'Date', 'Completed', 'Total Habits', 'Completion %']):
         ws1.write(7, ci, hdr, f_th if ci else f_th_left)
 
@@ -1013,7 +1013,7 @@ def export_excel(year, month):
     # ── year summary table ────────────────────────────────────────
     yr_hdr_row = daily_data_end + 2
     ws1.set_row(yr_hdr_row, 18)
-    ws1.merge_range(yr_hdr_row, 0, yr_hdr_row, 4, f'Year {year}  —  Monthly Overview', f_section)
+    ws1.merge_range(yr_hdr_row, 0, yr_hdr_row, 4, f'Year {year}: Monthly Overview', f_section)
     yr_col_hdrs = ['Month', 'Completed', 'Possible', 'Habits', 'Rate %']
     for ci, h in enumerate(yr_col_hdrs):
         ws1.write(yr_hdr_row + 1, ci, h, f_th if ci else f_th_left)
@@ -1038,7 +1038,7 @@ def export_excel(year, month):
         ch.set_plotarea({'border': {'color': CB, 'width': 0.5}, 'fill': {'color': CBG}})
         ch.set_legend({'none': True})
 
-    # Chart 1 – daily completion % (smooth line + area fill)
+    # Chart 1: daily completion % (smooth line + area fill)
     c1 = wb.add_chart({'type': 'area', 'subtype': 'standard'})
     c1.add_series({
         'name': 'Completion %',
@@ -1047,14 +1047,14 @@ def export_excel(year, month):
         'fill':   {'color': CA, 'transparency': 55},
         'line':   {'color': CA, 'width': 2.0},
     })
-    base_chart_style(c1, f'Daily Completion Rate — {month_name} {year}')
+    base_chart_style(c1, f'Daily Completion Rate, {month_name} {year}')
     c1.set_x_axis({'name': 'Date', 'num_font': {'size': 8}, 'label_position': 'low'})
     c1.set_y_axis({'name': '%', 'min': 0, 'max': 100, 'num_font': {'size': 8},
                    'major_gridlines': {'visible': True, 'line': {'color': CB}}})
     c1.set_size({'width': 560, 'height': 290})
     ws1.insert_chart('G1', c1, {'x_offset': 5, 'y_offset': 5})
 
-    # Chart 2 – daily check-ins count (column)
+    # Chart 2: daily check-ins count (column)
     c2 = wb.add_chart({'type': 'column'})
     c2.add_series({
         'name': 'Check-ins',
@@ -1064,14 +1064,14 @@ def export_excel(year, month):
         'border': {'color': CA2},
         'gap':    60,
     })
-    base_chart_style(c2, f'Daily Check-ins — {month_name} {year}')
+    base_chart_style(c2, f'Daily Check-ins, {month_name} {year}')
     c2.set_x_axis({'name': 'Date', 'num_font': {'size': 8}, 'label_position': 'low'})
     c2.set_y_axis({'name': 'Count', 'min': 0, 'num_font': {'size': 8},
                    'major_gridlines': {'visible': True, 'line': {'color': CB}}})
     c2.set_size({'width': 560, 'height': 290})
     ws1.insert_chart('G20', c2, {'x_offset': 5, 'y_offset': 5})
 
-    # Chart 3 – yearly overview (smooth line)
+    # Chart 3: yearly overview (smooth line)
     c3 = wb.add_chart({'type': 'line'})
     c3.add_series({
         'name': f'Completion % by Month',
@@ -1081,7 +1081,7 @@ def export_excel(year, month):
         'marker': {'type': 'circle', 'size': 5,
                    'fill': {'color': CG}, 'border': {'color': CG}},
     })
-    base_chart_style(c3, f'Year {year}  —  Monthly Completion Rate')
+    base_chart_style(c3, f'Year {year}: Monthly Completion Rate')
     c3.set_x_axis({'num_font': {'size': 8},
                    'major_gridlines': {'visible': False}})
     c3.set_y_axis({'name': '%', 'min': 0, 'max': 100, 'num_font': {'size': 8},
@@ -1090,7 +1090,7 @@ def export_excel(year, month):
     ws1.insert_chart('G39', c3, {'x_offset': 5, 'y_offset': 5})
 
     # ═══════════════════════════════════════════════════════════════
-    # SHEET 2 — Habit Tracker Grid
+    # SHEET 2: Habit Tracker Grid
     # ═══════════════════════════════════════════════════════════════
     ws2 = wb.add_worksheet('Habit Tracker')
     ws2.set_zoom(100)
@@ -1109,7 +1109,7 @@ def export_excel(year, month):
 
     # title
     ws2.merge_range(0, 0, 0, last_day + SUMCOLS,
-                    f'Habit Tracker  —  {month_name} {year}', f_title)
+                    f'Habit Tracker: {month_name} {year}', f_title)
 
     # column headers: row 1 = day numbers, row 2 = day-of-week
     ws2.write(1, 0, 'Habit', f_th_left)
@@ -1168,7 +1168,7 @@ def export_excel(year, month):
         ws2.write(r, last_day + 1, done_count, f_ftnum)
         ws2.write(r, last_day + 2, f'{rate}%',  pct_fmt(rate))
 
-    # footer rows — per-day totals
+    # footer rows: per-day totals
     ftr_done = n_habits + 3
     ftr_pct  = ftr_done + 1
     ws2.set_row(ftr_done, 16)
@@ -1185,7 +1185,7 @@ def export_excel(year, month):
         ws2.write(ftr_pct,  d, f'{ds["pct"]}%',  pct_fmt(ds['pct']))
 
     # ═══════════════════════════════════════════════════════════════
-    # SHEET 3 — Habit Analysis
+    # SHEET 3: Habit Analysis
     # ═══════════════════════════════════════════════════════════════
     ws3 = wb.add_worksheet('Habit Analysis')
     ws3.set_zoom(100)
@@ -1198,7 +1198,7 @@ def export_excel(year, month):
     ws3.set_row(0, 34)
     ws3.set_row(1, 18)
 
-    ws3.merge_range('A1:E1', f'Habit Analysis  —  {month_name} {year}', f_title)
+    ws3.merge_range('A1:E1', f'Habit Analysis: {month_name} {year}', f_title)
     for ci, hdr in enumerate(['Habit', 'Completed', 'Target Days', 'Missed', 'Completion %']):
         ws3.write(1, ci, hdr, f_th if ci else f_th_left)
 
@@ -1223,7 +1223,7 @@ def export_excel(year, month):
     ws3.write(sum_row, 3, total_possible - total_done, f_ftnum)
     ws3.write(sum_row, 4, f'{overall_pct}%',  pct_fmt(overall_pct))
 
-    # Chart 4 – horizontal bar: habit completion rates
+    # Chart 4: horizontal bar: habit completion rates
     c4 = wb.add_chart({'type': 'bar'})
     c4.add_series({
         'name': 'Completion %',
@@ -1233,7 +1233,7 @@ def export_excel(year, month):
         'border': {'color': CA2},
         'gap':    50,
     })
-    base_chart_style(c4, f'Habit Completion Rates — {month_name} {year}')
+    base_chart_style(c4, f'Habit Completion Rates, {month_name} {year}')
     c4.set_x_axis({'name': 'Completion %', 'min': 0, 'max': 100,
                    'num_font': {'size': 8},
                    'major_gridlines': {'visible': True, 'line': {'color': CB}}})
@@ -1243,7 +1243,7 @@ def export_excel(year, month):
     c4.set_size({'width': 480, 'height': chart_h})
     ws3.insert_chart('G2', c4, {'x_offset': 5, 'y_offset': 5})
 
-    # Chart 5 – pie: done vs missed
+    # Chart 5: pie: done vs missed
     if total_possible > 0:
         pie_row = sum_row + 2
         ws3.write(pie_row,     0, 'Category',  f_th_left)
@@ -1265,7 +1265,7 @@ def export_excel(year, month):
             'data_labels': {'percentage': True, 'category': True,
                             'font': {'size': 9, 'bold': True}},
         })
-        base_chart_style(c5, f'Completed vs Missed — {month_name} {year}')
+        base_chart_style(c5, f'Completed vs Missed, {month_name} {year}')
         c5.set_size({'width': 340, 'height': 280})
         anchor_col = 'G' if n_habits <= 8 else 'M'
         ws3.insert_chart(f'{anchor_col}{chart_h // 20 + 4}', c5, {'x_offset': 5, 'y_offset': 5})
@@ -1323,7 +1323,7 @@ def _choose_port():
 
 
 def _report_fatal(exc):
-    """A windowed exe fails silently otherwise — leave a trail the user can find."""
+    """A windowed exe fails silently otherwise, so leave a trail the user can find."""
     import traceback
     detail = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     try:
@@ -1357,7 +1357,7 @@ def main():
 
     if already_running:
         # A second double-click should raise the window you already have.
-        print(f'{APP_NAME} is already running at {url} — opening it.')
+        print(f'{APP_NAME} is already running at {url}, opening it.')
         if open_browser:
             import webbrowser
             webbrowser.open(url)
@@ -1370,8 +1370,9 @@ def main():
     if open_browser:
         import webbrowser
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
-    app.run(host='127.0.0.1', port=port,
-            debug=not bundled, use_reloader=not bundled)
+    # The Werkzeug debugger is a code-execution console, so it is opt-in.
+    debug = not bundled and os.environ.get('HABITFLOW_DEBUG') == '1'
+    app.run(host='127.0.0.1', port=port, debug=debug, use_reloader=debug)
 
 
 if __name__ == '__main__':

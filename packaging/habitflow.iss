@@ -10,7 +10,7 @@
 ;   iscc /DAppVersion=1.1.0 packaging\habitflow.iss
 ;
 ; Your habit data lives in %APPDATA%\HabitFlow and is deliberately NOT removed
-; on uninstall — the uninstaller asks first.
+; on uninstall; the uninstaller asks first.
 
 #ifndef AppVersion
   #define AppVersion "1.1.0"
@@ -93,7 +93,7 @@ begin
     begin
       if MsgBox('Also delete your habit history?' + #13#10#13#10 +
                 DataDir + #13#10#13#10 +
-                'Choose No to keep it — reinstalling HabitFlow will pick it up again.',
+                'Choose No to keep it. Reinstalling HabitFlow will pick it up again.',
                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
         DelTree(DataDir, True, True, True);
     end;

@@ -1,0 +1,23 @@
+/* DM Sans and DM Mono, latin subset, served from this app so no page load
+   ever contacts a third party. Both fonts are SIL OFL 1.1 (see OFL-*.txt). */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url(DMSans-latin.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(DMMono-400-latin.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(DMMono-500-latin.woff2) format('woff2');
+}

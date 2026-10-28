@@ -50,7 +50,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # HabitFlow needs Flask, xlsxwriter and the stdlib — nothing else. Excluding
+    # HabitFlow needs Flask, xlsxwriter and the stdlib, nothing else. Excluding
     # the rest keeps the download small and stops a developer's fat Anaconda /
     # Jupyter environment from leaking into the build.
     excludes=[

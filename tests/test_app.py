@@ -59,6 +59,25 @@ def test_seeds_default_habits(client):
     assert len(client.get('/api/habits').get_json()) == 8
 
 
+def test_pages_load_nothing_from_a_third_party(client):
+    """The README promises nothing leaves the machine, so no page may pull a font,
+    script or stylesheet from another host."""
+    import re
+    for path in ('/', '/dashboard'):
+        html = client.get(path).get_data(as_text=True)
+        external = re.findall(r'(?:src|href)\s*=\s*["\']((?:https?:)?//[^"\']+)', html)
+        assert external == [], f'{path} loads external resources: {external}'
+
+
+def test_bundled_fonts_and_chart_library_are_served(client):
+    css = client.get('/static/vendor/fonts/fonts.css')
+    assert css.status_code == 200
+    for name in ('DMSans-latin.woff2', 'DMMono-400-latin.woff2', 'DMMono-500-latin.woff2'):
+        assert name in css.get_data(as_text=True)
+        assert client.get(f'/static/vendor/fonts/{name}').status_code == 200
+    assert client.get('/static/vendor/chart.umd.min.js').status_code == 200
+
+
 def test_foreign_host_is_rejected(client):
     res = client.get('/api/habits', headers={'Host': 'evil.example.com'})
     assert res.status_code == 403
